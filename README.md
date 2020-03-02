@@ -59,4 +59,4 @@ NNCG will be licensed under the terms of the Apache license. See LICENSE for mor
 
 ## Contact
 
-NNCG was initialy developed by Oliver Urbann and it's development is currently continued by the Fraunhofer Institute for Material Flow and Logistics.
+NNCG was initialy developed by Oliver Urbann and it's development is currently continued by the Fraunhofer Institute for Material Flow and Logistics. You can find email adresses in our paper (see above) or just open a new issue for questions.
