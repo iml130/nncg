@@ -1,0 +1,8 @@
+imutils
+numpy
+keras
+imageio
+pydot
+opencv-python
+tensorflow
+
