@@ -101,8 +101,8 @@ pip3 install -r requirements.txt
 Clone the repository:
 
 ```shell
-git clone https://github.com/OliverUrbann/NNCG
-cd NNCG
+git clone https://github.com/iml130/nncg
+cd nncg
 ```
 
 ### Create the Image Database
