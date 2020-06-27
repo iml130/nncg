@@ -11,6 +11,7 @@ from .nodes.controlflow import UnrolledOperation
 from .nodes.arithmetic import MACNodeSSE3
 from .traverse.actions.searchnode import SearchNodeByType
 from .traverse.actions.writecaction import WriteCAction
+from .traverse.actions.quantizeaction import QuantizeAction
 from .traverse.tree import Edge
 from .compilercmds import compile, compiler_check
 from .tools import print_progress_bar
@@ -41,7 +42,8 @@ class NNCG:
                       image_mean=0,
                       arch="general",
                       testing=-1,
-                      weights_method='direct'):
+                      weights_method='direct',
+                      quatization=True):
         """
         Main function to run the code generation.
         :param imdb: Image database as list of numpy array.
@@ -52,6 +54,7 @@ class NNCG:
         :param arch: Architecture of target device.
         :param testing: Do testing? -1: all, otherwise number of tests.
         :param weights_method: How to store the weights and bias.
+        :param quatization: Convert applicable layers to unit8?
         :return: None.
         """
 
@@ -98,6 +101,11 @@ class NNCG:
                 sys.exit(1)
 
         CFooterNode(exe_return_filename, weights_method, cur_node)
+
+        # Quantization must be done before lowering as datatyes generated
+        # depend on it.
+        if quatization:
+            self.quantize()
 
         # Read in finished, lower to nodes that can be expressed in C.
         self.abstract_to_c()
@@ -153,6 +161,14 @@ class NNCG:
                                prefix='Evaluating')
         Allocation.reset()
         CHeaderNode.instance().reset()
+
+    def quantize(self):
+        """
+        Quantize all possible nodes.
+        :return:
+        """
+        action = QuantizeAction()
+        self.root_node.traverse(action)
 
     def to_sse3(self):
         """

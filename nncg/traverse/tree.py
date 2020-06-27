@@ -159,8 +159,8 @@ class TreeNode:
 
     def replace_self_with_path(self, first_node: TreeNode, last_node: TreeNode):
         """
-        Searches for all Edges to target this node and then replaces this node by the first node. All outgoing
-        node (not "inverse" Edges) of this node are added to the last node.
+        Searches for all Edges to this node and then replaces this node by the first node. All outgoing
+        Edges (not "inverse" Edges) of this node are added to the last node.
         :param first_node: Node where all incoming Edges will point to.
         :param last_node: Node to add to all outgoing Edges.
         :return: None.

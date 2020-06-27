@@ -144,6 +144,9 @@ class Conv2DNode(Node):
         # Don't remove this node, just put everything as content to this node.
         self.add_edge('content', b_h_loop)
 
+    def quantize(self):
+        pass
+
 
 class LeakyReLUNode(Node):
     """
