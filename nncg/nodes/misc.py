@@ -63,7 +63,7 @@ class Node(Writable):
         return node_type is None or type(self) is node_type
 
 
-class TestNode(Node):
+class KerasLayerNode(Node):
     """
     A node that automatically tests the input of this node (output of previous node). keras_compile() will
     use the provided images (imdb) to get the results of all Keras layers. Additionally, the compiled executable

@@ -1,10 +1,9 @@
 from nncg.traverse.traverseaction import TraverseAction
-from nncg.quantization import QuantizedNode
 
 
-class QuantizeAction(TraverseAction):
+class LowerAction(TraverseAction):
     """
-    Action to apply quantization where possible
+    Action to lower where possible
     """
 
     def __init__(self):
@@ -12,19 +11,18 @@ class QuantizeAction(TraverseAction):
         Init this class.
         """
         super().__init__()
-        self.traverse_edges = ['next']
+        self.traverse_edges = ['next', 'content']
 
     def _post_action(self, edge) -> bool:
         """
-        If a quantize() is found in the node, a QuantizedNode() is created and quatize() is called.
+        If a lowering() is found in the node it is called.
         Must be a _post_action() and not _pre_action() as the graph changes with calling QuantizedNode
         and to be able to continue we must have visited the nodes.
         :param edge: The currently visited Edge.
         :return: Always True.
         """
         t = edge.get_target()
-        func = getattr(t, "quantize", None)
-        if callable(func):
-            QuantizedNode(t)
-            func()
+        lowering = getattr(t, "lowering", None)
+        if callable(lowering):
+            lowering()
         return True

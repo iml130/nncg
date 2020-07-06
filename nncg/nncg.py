@@ -2,6 +2,7 @@ import sys
 from keras import backend as K
 from keras.layers import Convolution2D, MaxPooling2D, Flatten, \
     Dropout, BatchNormalization, LeakyReLU, InputLayer, Dense
+import numpy as np
 
 from .nodes.cnn import *
 from .nodes.language import CHeaderNode, CFooterNode
@@ -12,6 +13,7 @@ from .nodes.arithmetic import MACNodeSSE3
 from .traverse.actions.searchnode import SearchNodeByType
 from .traverse.actions.writecaction import WriteCAction
 from .traverse.actions.quantizeaction import QuantizeAction
+from .traverse.actions.lower import LowerAction
 from .traverse.tree import Edge
 from .compilercmds import compile, compiler_check
 from .tools import print_progress_bar
@@ -23,7 +25,7 @@ class NNCG:
     Core class of this compiler.
     """
     root_node: Edge = None
-    test_nodes: List[TestNode] = []
+    test_nodes: List[KerasLayerNode] = []
 
     def __init__(self):
         """
@@ -33,6 +35,8 @@ class NNCG:
         self.test_nodes = []
         self.testing = None
         self.model = None
+        self.min_in = 0
+        self.max_in = 0
 
     def keras_compile(self,
                       imdb,
@@ -70,6 +74,9 @@ class NNCG:
         self.model = model
         input_shape = model.layers[0].input.shape[1:].as_list()
 
+        if quatization:
+            min, max = self.get_feature_value_range(imdb, model)
+
         self.root_node = Edge('root', CHeaderNode(identifier, input_shape, weights_method), None, 'forward')
 
         cur_node = MeanNode(image_mean, self.root_node.target)
@@ -84,10 +91,9 @@ class NNCG:
             elif type(layer) == MaxPooling2D:
                 cur_node = self.add_maxpool2d(layer, cur_node)
             elif type(layer) == LeakyReLU:
-                pass
+                pass  # fixme
             elif type(layer) == Dense:
                 cur_node = self.add_dense(layer, cur_node)
-                pass
             elif type(layer) == Flatten:
                 cur_node = self.add_flatten(cur_node)
             elif type(layer) == Dropout:
@@ -105,7 +111,7 @@ class NNCG:
         # Quantization must be done before lowering as datatyes generated
         # depend on it.
         if quatization:
-            self.quantize()
+            self.quantize(model, imdb)
 
         # Read in finished, lower to nodes that can be expressed in C.
         self.abstract_to_c()
@@ -162,13 +168,27 @@ class NNCG:
         Allocation.reset()
         CHeaderNode.instance().reset()
 
-    def quantize(self):
+    def quantize(self, model, imdb):
         """
         Quantize all possible nodes.
         :return:
         """
         action = QuantizeAction()
         self.root_node.traverse(action)
+
+    @staticmethod
+    def get_feature_value_range(imdb, model):
+        print("Predicting images to find min/max for quantization and others...", end="")
+        max_in = [np.max(imdb)]
+        min_in = [np.min(imdb)]
+        outputs = [layer.output for layer in model.layers if not type(layer) is InputLayer]
+        func = K.function([model.input, K.learning_phase()], outputs)
+        layer_outs = func([np.array(imdb), 0])
+        for l in layer_outs:
+            max_in.append(np.max(l))
+            min_in.append(np.min(l))
+        print(" finished")
+        return min_in, max_in
 
     def to_sse3(self):
         """
@@ -338,7 +358,7 @@ class NNCG:
         else:
             func = K.function([self.model.input, K.learning_phase()], [layer.output])
             name = layer.name
-        n = TestNode(prev_node, func, name)
+        n = KerasLayerNode(prev_node, func, name)
         self.test_nodes.append(n)
         return n
 
@@ -348,22 +368,5 @@ class NNCG:
         to the graph and only once.
         :return: None.
         """
-        n = self.root_node.target
-        node_count = 0
-        while n.has_edge('next'):  # Future: Use search for this
-            node_count += 1
-            n = n.get_node('next')
-
-        n = self.root_node.target
-        i = 0
-        cont = True
-        while cont:
-            lowering = getattr(n, "lowering", None)
-            if n.has_edge('next'):
-                n = n.get_node('next')
-            else:
-                cont = False
-            if callable(lowering):
-                lowering()
-            print_progress_bar(i, node_count, prefix='Lowering to C', suffix=str(n))
-            i += 1
+        action = LowerAction()
+        self.root_node.traverse(action)
