@@ -94,6 +94,18 @@ class Variable(TreeNode):
         self.pads = _len(dim) * [[0, 0]]
         self.temporal_value = None
 
+    @staticmethod
+    def type_to_c(t) -> str:
+        type_map = {
+            'float': 'float',
+            'float32': 'float',
+            'float64': 'double',
+            'int8': 'int',
+            'uint8': 'int',
+            'int16': 'int'
+        }
+        return type_map[str(t)]
+
     def __str__(self):
         """
         Get name of Variable (including unique number).
@@ -126,6 +138,17 @@ class Variable(TreeNode):
         """
         return ''.join(['[' + str(i + j[0] + j[1]) + ']' for i, j in zip(np.atleast_1d(self.dim), self.pads)])
 
+    @staticmethod
+    def format_value(v, dtype: np.dtype):
+        if dtype == 'float32':
+            return np.format_float_scientific(v, precision=15)
+        elif dtype == 'int8':
+            return str(v)
+        elif dtype == 'int16':
+            return str(v)
+        else:
+            raise Exception("Unknown data type.")
+
     def get_def(self, write_init_data=True):
         """
         Get the string to define this Variable. Primarily useful for CHeaderNode.
@@ -136,10 +159,12 @@ class Variable(TreeNode):
             return
         self.dim_str = self._get_dim_str()
         if self.init_data is not None and write_init_data:
-            self.data_str = ','.join([np.format_float_scientific(f, precision=15) for f in (self.init_data.flatten())])
+            self.data_str = ','.join([Variable.format_value(f, self.init_data.dtype)
+                                      for f in (self.init_data.flatten())])
         else:
             self.data_str = '0'
-        return 'static {type} {name}_{index} {alignment} {dim_str} = {{ {data_str} }};\n'.format(**self.__dict__)
+        self.var_type = Variable.type_to_c(self.type)
+        return 'static {var_type} {name}_{index} {alignment} {dim_str} = {{ {data_str} }};\n'.format(**self.__dict__)
 
     def get_pointer_decl(self):
         """

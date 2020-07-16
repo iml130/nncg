@@ -88,9 +88,8 @@ class TreeNode:
         """
         if name in self.edges.keys():
             return self.edges[name].target
-        more_results = [n for n in self.edges.keys() if '!content' in n]
-        if len(more_results) == 1:
-            return self.edges[more_results[0]].target
+        # ToDo: Probably due to graph operations there is a single edge with that name but with trailing *.
+        #       In this case that edge should be returned. Or the one that comes next regarding number of *.
         raise
 
     def get_node_by_type(self, n_type) -> List[TreeNode]:
@@ -264,7 +263,9 @@ class TreeNode:
 
     def traverse(self, action: TraverseAction):
         """
-        Start a traverse action at this node by calling traverse on all Edges.
+        Start a traverse action at this node by calling traverse on all Edges. Note that the order of traversing
+        multiple edges depends on the order they were inserted. You may use a different type of dict class
+        to get a different behaviour.
         :param action: The action to execute while visiting die Edges.
         :return: None.
         """

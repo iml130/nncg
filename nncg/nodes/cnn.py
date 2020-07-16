@@ -5,6 +5,7 @@ from nncg.nodes.controlflow import LoopNode
 from nncg.nodes.language import CHeaderNode
 from nncg.allocation import Allocation
 from nncg.tools import _len
+from nncg.quantization import QuantizedNode
 
 
 class Conv2DNode(Node):
@@ -71,7 +72,7 @@ class Conv2DNode(Node):
         """
 
         # Create loops for settings the bias.
-        b_var = Allocation.allocate_var('float', 'b', self.b.shape, init_data=self.b)
+        b_var = Allocation.allocate_var(self.b.dtype, 'b', self.b.shape, init_data=self.b)
         out_var_idx = IndexedVariable(self.out_var)
         b_var_idx = IndexedVariable(b_var)
 
@@ -110,7 +111,7 @@ class Conv2DNode(Node):
 
         b_h_loop.add_edge('next', h_loop)
 
-        w_var = Allocation.allocate_var('float', 'w', self.w.shape, init_data=self.w)
+        w_var = Allocation.allocate_var(self.w.dtype, 'w', self.w.shape, init_data=self.w)
         out_var_idx = IndexedVariable(self.out_var)
         in_var_idx = IndexedVariable(self.in_var, False)
         w_var_idx = IndexedVariable(w_var, False)
@@ -144,8 +145,13 @@ class Conv2DNode(Node):
         # Don't remove this node, just put everything as content to this node.
         self.add_edge('content', b_h_loop)
 
-    def quantize(self):
-        pass
+    def quantize(self, x_scale):
+        min = np.min([np.min(self.w), np.min(self.b)])
+        max = np.max([np.max(self.w), np.max(self.b)])
+        self.scale = QuantizedNode.quantize_scale(min, max, 'int8')
+        self.w = (self.w / self.scale).astype('int8')
+        self.b = (self.b / self.scale / x_scale).astype('int16')
+        self.out_var.type = 'int8'
 
 
 class LeakyReLUNode(Node):

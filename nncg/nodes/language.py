@@ -152,7 +152,8 @@ void init_weights()
             self.snippet += v.get_def(self.direct).replace('{', '{{').replace('}', '}}')
             if self.stdio:
                 # In this case the weights are later loaded from file.
-                weight_snippet += '\tinit_weight_float((float*){}, {}, "{}");\n'.format(str(v), np.prod(v.dim), str(v))
+                var_type = Variable.type_to_c(v.type)
+                weight_snippet += '\tinit_weight_float(({}*){}, {}, "{}");\n'.format(var_type, str(v), np.prod(v.dim), str(v))
                 Writer.write_data(v.init_data, str(v))
         if self.stdio:
             self.snippet += self.weights_init_stdio.format(weight_snippet).replace('{', '{{').replace('}', '}}')

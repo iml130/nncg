@@ -105,7 +105,7 @@ class ThreeAddressNode(Node):
     """
     snippet = ''
 
-    def __init__(self, res_var: Expression, var1: Expression, var2: Expression, prev_node: Node = None):
+    def __init__(self, res_var: TreeNode, var1: TreeNode, var2: TreeNode, prev_node: Node = None):
         """
         Init method for class.
         :param res_var: First operand, usually the variable storing the result of this operation.
@@ -151,6 +151,10 @@ class MACNode(ThreeAddressNode):
     """
 
     snippet = '{res_var} += {var1} * {var2};\n'
+
+
+class MultNode(ThreeAddressNode):
+    snippet = '{res_var} = {var1} * {var2};\n'
 
 
 class MACNodeSSE3(MACNode, Optimization):

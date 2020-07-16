@@ -67,7 +67,7 @@ class KerasLayerNode(Node):
     """
     A node that automatically tests the input of this node (output of previous node). keras_compile() will
     use the provided images (imdb) to get the results of all Keras layers. Additionally, the compiled executable
-    will also do the inference on the same images and this TestNode writes the results to files. Afterwards,
+    will also do the inference on the same images and this KerasLayerNode writes the results to files. Afterwards,
     the results are compared.
     """
     in_var: Variable
@@ -107,7 +107,7 @@ class KerasLayerNode(Node):
         self.num = np.prod(self.in_var.dim + np.sum(self.in_var.pads, 1))
         super().write_c()
 
-    def test(self, im):
+    def test(self, im, exit_on_err):
         """
         Perform the test using the provided image.
         :param im: The image as 4 dimensional array comparable to Keras.
@@ -146,7 +146,7 @@ class KerasLayerNode(Node):
         else:
             raise Exception("Unimplemented")
 
-        if not np.allclose(res, c_res, atol=0.000001):  # We have to allow a small error due to rounding errors
+        if exit_on_err and not np.allclose(res, c_res, atol=0.000001):  # We have to allow a small error due to rounding errors
             print("Check of variable {} for layer {}.".format(self.in_var, self.layer_name))
             idx = unravel_index(np.argmax(res - c_res), res.shape)
             print('Largest error {} at {} ({}).'.format(np.max(res - c_res), idx, np.argmax(res - c_res)))
@@ -154,6 +154,8 @@ class KerasLayerNode(Node):
             sys.exit(4)
         else:
             os.remove(self.var_name)
+
+        return res, c_res
 
 
 class ExpressionNode(Node):

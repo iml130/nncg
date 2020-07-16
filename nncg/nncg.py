@@ -38,18 +38,11 @@ class NNCG:
         self.min_in = 0
         self.max_in = 0
 
-    def keras_compile(self,
-                      imdb,
-                      model,
-                      code_path,
-                      identifier=None,
-                      image_mean=0,
-                      arch="general",
-                      testing=-1,
-                      weights_method='direct',
-                      quatization=True):
+    def keras_compile(self, imdb, model, code_path, identifier=None, image_mean=0, arch="general", testing=-1,
+                      test_mode="error", quatization=False, weights_method='direct'):
         """
         Main function to run the code generation.
+        :param test_mode:
         :param imdb: Image database as list of numpy array.
         :param model: Keras model.
         :param code_path: Path for writing code.
@@ -57,6 +50,9 @@ class NNCG:
         :param image_mean: Mean to subtract from image.
         :param arch: Architecture of target device.
         :param testing: Do testing? -1: all, otherwise number of tests.
+        :param test_mode: Defining the mode for testing. In case of "classification", the class will
+                          be compared as result. If "regression", the mean error is given. If "error",
+                          the test will quit if a value in any layer is larger than a threshold.
         :param weights_method: How to store the weights and bias.
         :param quatization: Convert applicable layers to unit8?
         :return: None.
@@ -73,9 +69,6 @@ class NNCG:
 
         self.model = model
         input_shape = model.layers[0].input.shape[1:].as_list()
-
-        if quatization:
-            min, max = self.get_feature_value_range(imdb, model)
 
         self.root_node = Edge('root', CHeaderNode(identifier, input_shape, weights_method), None, 'forward')
 
@@ -111,7 +104,7 @@ class NNCG:
         # Quantization must be done before lowering as datatyes generated
         # depend on it.
         if quatization:
-            self.quantize(model, imdb)
+            self.quantize(imdb)
 
         # Read in finished, lower to nodes that can be expressed in C.
         self.abstract_to_c()
@@ -159,21 +152,28 @@ class NNCG:
 
             assert res == 0
 
+            res = 0
+            c_res = 0
             for n in self.test_nodes:
-                n.test(im)
+                res, c_res = n.test(im, exit_on_err=test_mode == 'error')
             tested += 1
+            if test_mode == 'classification':
+                if np.argmax(res) != np.argmax(c_res):
+                    fail += 1
+            elif test_mode == 'regression':
+                pass
             print_progress_bar(tested, testing,
                                suffix=", " + str((tested - fail) / tested * 100) + "% ok",
                                prefix='Evaluating')
         Allocation.reset()
         CHeaderNode.instance().reset()
 
-    def quantize(self, model, imdb):
+    def quantize(self, imdb):
         """
         Quantize all possible nodes.
         :return:
         """
-        action = QuantizeAction()
+        action = QuantizeAction(imdb)
         self.root_node.traverse(action)
 
     @staticmethod

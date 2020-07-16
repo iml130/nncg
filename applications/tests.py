@@ -32,9 +32,9 @@ def no_dense():
     no_dense.add(Convolution2D(4, (3, 3), input_shape=(36, 18, 1),
                                activation='relu', padding='same'))
     no_dense.add(MaxPooling2D(pool_size=(2, 2)))
-    no_dense.add(Convolution2D(8, (3, 3), padding='same', activation='relu'))
+    no_dense.add(Convolution2D(8, (3, 3), padding='same', activation='relu', bias_initializer='random_uniform'))
     no_dense.add(MaxPooling2D(pool_size=(2, 2)))
-    no_dense.add(Convolution2D(16, (3, 3), padding='same', activation='relu'))  # Could be softmax
+    no_dense.add(Convolution2D(16, (3, 3), padding='same', activation='relu', bias_initializer='random_uniform'))  # Could be softmax
     no_dense.add(MaxPooling2D(pool_size=(4, 2)))
     no_dense.add(Dropout(0.4))
     no_dense.add(Convolution2D(2, (2, 2), activation='softmax'))
@@ -49,15 +49,15 @@ def dense_model():
     Tests an example CNN with a Dense layer and valid padding.
     :return: None.
     """
-    num_imgs = 10
+    num_imgs = 10000
     nncg = NNCG()
     dense_model = Sequential()
     dense_model.add(Convolution2D(4, (3, 3), input_shape=(70, 50, 1),
                                   activation='relu', padding='same'))
     dense_model.add(MaxPooling2D(pool_size=(2, 2)))
-    dense_model.add(Convolution2D(8, (3, 3), padding='valid', activation='relu'))
+    dense_model.add(Convolution2D(8, (3, 3), padding='valid', activation='relu', bias_initializer='random_uniform'))
     dense_model.add(MaxPooling2D(pool_size=(2, 2)))
-    dense_model.add(Convolution2D(16, (3, 3), padding='valid', activation='relu'))
+    dense_model.add(Convolution2D(16, (3, 3), padding='valid', activation='relu', bias_initializer='random_uniform'))
     dense_model.add(MaxPooling2D(pool_size=(2, 2)))
     dense_model.add(Dropout(0.4))
     dense_model.add(Flatten())
@@ -115,8 +115,8 @@ def VGG19_test():
 
 if __name__ == '__main__':
     # All tests do not need an image database so we just call them.
-    no_dense()
+    #no_dense()
     dense_model()
-    strides()
-    VGG16_test()
-    VGG19_test()
+    #strides()
+    #VGG16_test()
+    #VGG19_test()

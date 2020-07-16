@@ -34,6 +34,7 @@ images = load_imdb(imgdb_path)
 model = load_model(model_path, compile=False)
 
 general_generator = NNCG()
-general_generator.keras_compile(images["images"], model, code_path, "gen", arch="general", testing=1000)
+general_generator.keras_compile(images["images"], model, code_path, "gen", arch="general", testing=1000,
+                                quatization=True, test_mode='classification')
 sse_generator = NNCG()
 sse_generator.keras_compile(images["images"], model, code_path, "sse3", arch="sse3", testing=1000)
