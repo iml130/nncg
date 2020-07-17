@@ -90,7 +90,14 @@ class TreeNode:
             return self.edges[name].target
         # ToDo: Probably due to graph operations there is a single edge with that name but with trailing *.
         #       In this case that edge should be returned. Or the one that comes next regarding number of *.
-        raise
+        candidates = []
+        for k in self.edges.keys():
+            if str(k).find(name) != -1:
+                candidates.append(k)
+        if len(candidates) != 1:
+            raise
+        else:
+            return self.edges[candidates[0]].target
 
     def get_node_by_type(self, n_type) -> List[TreeNode]:
         """
