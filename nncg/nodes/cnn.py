@@ -151,7 +151,7 @@ class Conv2DNode(Node):
         self.scale = QuantizedNode.quantize_scale(min, max, 'int8')
         self.w = (self.w / self.scale).astype('int8')
         self.b = (self.b / self.scale / x_scale).astype('int16')
-        self.out_var.type = 'int8'
+        self.out_var.type = 'int16'
 
 
 class LeakyReLUNode(Node):

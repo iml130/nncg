@@ -100,8 +100,8 @@ class AssignmentNode(TwoAddressNode):
 
 class ThreeAddressNode(Node):
     """
-    Base class for all arithmetic operations with three operands.
-    res = var1 OP var2
+    Base class for all arithmetic operations with three operands and a cast to change precision.
+    res = (cast) var1 OP var2
     """
     snippet = ''
 
@@ -117,6 +117,16 @@ class ThreeAddressNode(Node):
         self.add_edge('res_var', res_var, 'var')
         self.add_edge('var1', var1, 'var')
         self.add_edge('var2', var2, 'var')
+
+        # Check if the res_var has a type with more precision and cast if
+        #if var1.get_node('var').type == '
+        res_var_w = Variable.type_to_width(res_var.get_type())
+        var1_w = Variable.type_to_width(var1.get_type())
+        var2_w = Variable.type_to_width(var2.get_type())
+        if var1_w < res_var_w and var2_w < res_var_w:
+            self.cast = '(' + Variable.type_to_c(res_var.get_type()) + ')'
+        else:
+            self.cast = ''
 
     @classmethod
     def from_threeaddress(cls, n: ThreeAddressNode):
@@ -137,7 +147,7 @@ class ThreeAddressNode(Node):
 
 class SubNode(ThreeAddressNode):
     """
-    Node for simple subtraction.
+    Node for simple subtraction with optional cast to change precision of calculation.
     res = var1 - var2
     """
 
@@ -150,11 +160,11 @@ class MACNode(ThreeAddressNode):
     res += var1 * var2
     """
 
-    snippet = '{res_var} += {var1} * {var2};\n'
+    snippet = '{res_var} += {cast} {var1} * {var2};\n'
 
 
 class MultNode(ThreeAddressNode):
-    snippet = '{res_var} = {var1} * {var2};\n'
+    snippet = '{res_var} = {cast} {var1} * {var2};\n'
 
 
 class MACNodeSSE3(MACNode, Optimization):
@@ -177,7 +187,7 @@ class MACNodeSSE3(MACNode, Optimization):
         """
         Determine if this SSE3 implementation is applicable as replacement for a simple MACNode. The
         MACNode must be within an UnrolledOperation. The operands res_var and var1 must be accessed
-        in a specific way to be replaceable by this implementation.
+        in a specific way to be replaceable by this implementation. Datatype must be float.
         :param other: The MACNode to be replaced.
         :return: True or False.
         """
@@ -198,6 +208,16 @@ class MACNodeSSE3(MACNode, Optimization):
         if [_v % 4 for _v in pattern[v[0]]] != [0, 0, 0, 0]:
             return False
 
+        # Check data types
+        if unrolled_op.orig_op.get_node('res_var').get_node('var').type != 'float':
+            return False
+
+        if unrolled_op.orig_op.get_node('var1').get_node('var').type != 'float':
+            return False
+
+        if unrolled_op.orig_op.get_node('var2').get_node('var').type != 'float':
+            return False
+
         return True
 
     @staticmethod
@@ -209,6 +229,74 @@ class MACNodeSSE3(MACNode, Optimization):
         :return: None
         """
         n_sse3 = MACNodeSSE3.from_threeaddress(root_node)
+        unrolled_op = root_node.get_node('!content')
+        unrolled_op.add_edge('content', n_sse3, replace=True)
+        root_node.get_node('res_var').get_node('var').set_alignment(2)
+
+
+class MACNodeInt8SSE3(MACNode, Optimization):
+    """
+    Node for a quad multiply and accumulate for SSE3 CPUs.
+    """
+    snippet = '''{{
+    __m128 w, x, y;
+    qx = _mm_lddqu_si128((__m128i*)&{var2});
+    qw = _mm_lddqu_si128((__m128i*)&{var1});
+    qx = _mm_maddubs_epi16(qx, qw);
+    {res_var} = _mm_adds_epi16(qx, cx{layer}[{x_out_1}][{x_out_2}][{lw}]);
+}}
+'''
+
+    @classmethod
+    def applicable(cls, other: MACNode):
+        """
+        Determine if this SSE3 with quantization implementation is applicable as replacement for a simple MACNode. The
+        MACNode must be within an UnrolledOperation. The operands res_var and var1 must be accessed
+        in a specific way to be replaceable by this implementation. Also datatype must be Int8.
+        :param other: The MACNode to be replaced.
+        :return: True or False.
+        """
+        unrolled_op: UnrolledOperation = other.get_node('!content')
+
+        # The UnrolledOperation must execute 16 MACNodes in a row that are then replaced.
+        if unrolled_op.times != 16:
+            return False
+        pattern = unrolled_op.get_access_pattern(16)
+
+        # Check  if the 16 MACs write to res_var in a row as this is done by the pattern above
+        v = unrolled_op.get_all_vars('res_var')
+        if [pattern[_v][0] for _v in v] != [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]:
+            return False
+
+
+        # Check data types
+        if unrolled_op.orig_op.get_node('res_var').get_node('var').type != 'int16':
+            return False
+
+        if unrolled_op.orig_op.get_node('var1').get_node('var').type != 'int8':
+            return False
+
+        if unrolled_op.orig_op.get_node('var2').get_node('var').type != 'uint8':
+            return False
+
+        # We need h w cout cin for w, so we transpose var1
+
+        # Before unrolling we have to exchange the last two loops because we need to unroll the second innerst loop
+        # by changing the 'content' edges. All other edges must be unchanged as e.g. edges to counter variables have
+        # to change postiion with its loops.
+
+
+        return True
+
+    @staticmethod
+    def apply(root_node):
+        """
+        The root_node must be a MACNode, followed by three further MACNode, in an UnrolledOperation.
+        It is then replaced by a single MACNodeInt8SSE3.
+        :param root_node: Root node to be replaced.
+        :return: None
+        """
+        n_sse3 = MACNodeInt8SSE3.from_threeaddress(root_node)
         unrolled_op = root_node.get_node('!content')
         unrolled_op.add_edge('content', n_sse3, replace=True)
         root_node.get_node('res_var').get_node('var').set_alignment(2)

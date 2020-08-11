@@ -63,7 +63,7 @@ def dense_model():
     dense_model.add(Flatten())
     dense_model.add(Dense(2, activation='softmax'))
     images = random_imdb(num_imgs, dense_model.input.shape[1:].as_list())
-    nncg.keras_compile(images, dense_model, 'dense_model.c', quatization=True)
+    nncg.keras_compile(images, dense_model, 'dense_model.c', quatization=True, arch='sse3', test_mode='classification')
     print_success('dense_model')
 
 

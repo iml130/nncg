@@ -88,7 +88,7 @@ class TreeNode:
         """
         if name in self.edges.keys():
             return self.edges[name].target
-        # ToDo: Probably due to graph operations there is a single edge with that name but with trailing *.
+        #       Probably due to graph operations there could be single edge with that name but with trailing *.
         #       In this case that edge should be returned. Or the one that comes next regarding number of *.
         candidates = []
         for k in self.edges.keys():

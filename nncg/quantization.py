@@ -5,15 +5,13 @@ from nncg.nodes.expressions import IndexedVariable, Constant
 from nncg.nodes.arithmetic import MultNode
 from nncg.nodes.language import CHeaderNode
 
-import numpy as np
-
 
 class QuantizedNode(Node):
-    def __init__(self, node: Node, x_scale, prev_keras_node):
+    def __init__(self, node: Node, x_scale, prev_keras_node, dtype):
         super().__init__()
 
         node.replace_self_with_path(self, self)
-        q_node = QuantizeNode(x_scale, prev_keras_node)
+        q_node = QuantizeNode(x_scale, prev_keras_node, dtype)
         node.in_var = q_node.out_var
         self.add_edge('content', q_node)
         q_node.add_edge('next', node)
@@ -42,12 +40,12 @@ class QuantizedNode(Node):
 
 
 class QuantizeNode(Node):
-    def __init__(self, x_scale, prev_node):
+    def __init__(self, x_scale, prev_node, dtype):
         super().__init__()
         self.in_var = prev_node.out_var
         self.in_dim = prev_node.out_dim
         self.out_dim = self.in_dim
-        self.out_var = Allocation.allocate_var('uint8', 'x', self.out_dim)
+        self.out_var = Allocation.allocate_var(dtype, 'x', self.out_dim)
         self.out_var.change_padding(self.in_var.pads)
         self.x_scale = x_scale
 

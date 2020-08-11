@@ -291,6 +291,7 @@ class UnrolledOperation(Node):
         """
         self.times = times
         orig_op = self.get_node('content')
+        self.orig_op = orig_op
         original_content = DeepCopy.deep_copy(orig_op)
         var_to_replace = self.get_node('unrolled_var')
         end_of_chain = orig_op.search_path_end('next')

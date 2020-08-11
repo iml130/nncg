@@ -52,6 +52,14 @@ class Constant(TreeNode):
         """
         return str(self.c)
 
+    def get_type(self):
+        """
+        Get the type of this constant. It's always float.
+        :return: float
+        """
+        return 'float'
+
+
 
 class Variable(TreeNode):
     """
@@ -100,11 +108,23 @@ class Variable(TreeNode):
             'float': 'float',
             'float32': 'float',
             'float64': 'double',
-            'int8': 'int',
-            'uint8': 'int',
-            'int16': 'int'
+            'int8': 'int8_t',
+            'uint8': 'unsigned char',
+            'int16': 'int16_t'
         }
         return type_map[str(t)]
+
+    @staticmethod
+    def type_to_width(t):
+        width_map = {
+            'float': 32,
+            'float32': 32,
+            'float64': 64,
+            'int8': 8,
+            'uint8': 8,
+            'int16': 16
+        }
+        return width_map[str(t)]
 
     def __str__(self):
         """
@@ -130,6 +150,13 @@ class Variable(TreeNode):
         :return: The cast string.
         """
         return '({}*)'.format(self.type)
+
+    def get_type(self):
+        """
+        Return the type of the data.
+        :return: The type
+        """
+        return self.type
 
     def _get_dim_str(self):
         """
@@ -200,6 +227,13 @@ class IndexedVariable(TreeNode):
         super().__init__()
         self.add_edge('var', var)
         self.padding_to_offset = padding_to_offset
+
+    def get_type(self):
+        """
+        Return the type of the Variable that is indexed here.
+        :return: The type as string.
+        """
+        return self.get_node('var').get_type()
 
     def set_indices(self, indices: List[TreeNode]):
         """

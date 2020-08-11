@@ -104,7 +104,8 @@ class NNCG:
         # Quantization must be done before lowering as datatyes generated
         # depend on it.
         if quatization:
-            self.quantize(imdb)
+            if arch == 'sse3':
+                self.quantize(imdb, 'uint8')
 
         # Read in finished, lower to nodes that can be expressed in C.
         self.abstract_to_c()
@@ -114,7 +115,11 @@ class NNCG:
         if arch == 'general':
             pass
         elif arch == 'sse3':
-            self.to_sse3()
+            if quatization:
+                self.to_quantized_sse3()
+                pass
+            else:
+                self.to_sse3()
 
         print("")
         print("Writing...")
@@ -168,12 +173,12 @@ class NNCG:
         Allocation.reset()
         CHeaderNode.instance().reset()
 
-    def quantize(self, imdb):
+    def quantize(self, imdb, required_dtype):
         """
         Quantize all possible nodes.
         :return:
         """
-        action = QuantizeAction(imdb)
+        action = QuantizeAction(imdb, required_dtype)
         self.root_node.traverse(action)
 
     @staticmethod
@@ -213,6 +218,30 @@ class NNCG:
             if type(node is MACNode):
                 if MACNodeSSE3.applicable(node):
                     MACNodeSSE3.apply(node)
+
+    def to_quantized_sse3(self):
+        """
+        From a general architecture to SSE3 using quantized values.
+        :return: None
+        """
+        desired_unroll = 16
+        node_type = MACNode
+        self.join_loops(desired_unroll, node_type)
+        action = SearchNodeByType(node_type)
+        self.root_node.traverse(action)
+        for r in action.result:
+            loop_to_unroll = r[-2]
+            loop_to_unroll.unroll(desired_unroll)
+
+        action = SearchNodeByType(UnrolledOperation)
+        self.root_node.traverse(action)
+        CHeaderNode.instance().intel_intr_required = True
+        for r in action.result:
+            u: UnrolledOperation = r[-1]
+            node = u.get_node('content')
+            if type(node is MACNode):
+                if MACNodeInt8SSE3.applicable(node):
+                    MACNodeInt8SSE3.apply(node)
 
     def join_loops(self, desired_unroll, node_type):
         """

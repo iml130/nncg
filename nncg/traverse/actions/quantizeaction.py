@@ -10,7 +10,7 @@ class QuantizeAction(TraverseAction):
     Action to apply quantization where possible
     """
 
-    def __init__(self, imdb):
+    def __init__(self, imdb, dtype_required):
         """
         Init this class.
         """
@@ -18,6 +18,7 @@ class QuantizeAction(TraverseAction):
         self.traverse_edges = ['next']
         self.imdb = imdb
         self.max_error = 0
+        self.dtype_required = dtype_required
 
     def _pre_action(self, edge) -> bool:
         t = edge.get_target()
@@ -41,7 +42,12 @@ class QuantizeAction(TraverseAction):
             prev_keras_node = t.get_node("!next")
             max_in = prev_keras_node.out_max
             min_in = prev_keras_node.out_min
-            x_scale = QuantizedNode.quantize_scale(min_in, max_in, 'uint8')
-            func(x_scale)
-            QuantizedNode(t, x_scale, prev_keras_node)
+            if min_in < 0:
+                dtype = 'int8'
+            else:
+                dtype = 'uint8'
+            if self.dtype_required == dtype:
+                x_scale = QuantizedNode.quantize_scale(min_in, max_in, dtype)
+                func(x_scale)
+                QuantizedNode(t, x_scale, prev_keras_node, dtype)
         return True

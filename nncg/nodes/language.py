@@ -18,6 +18,7 @@ class CHeaderNode(Node):
 #include <pmmintrin.h>
 #include <tmmintrin.h>
 #include <immintrin.h>
+#include <xmmintrin.h>
     '''
 
     math_include = '#include <math.h>\n'
