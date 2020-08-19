@@ -49,15 +49,15 @@ def dense_model():
     Tests an example CNN with a Dense layer and valid padding.
     :return: None.
     """
-    num_imgs = 10000
+    num_imgs = 1000
     nncg = NNCG()
     dense_model = Sequential()
-    dense_model.add(Convolution2D(4, (3, 3), input_shape=(70, 50, 1),
+    dense_model.add(Convolution2D(8, (3, 3), input_shape=(70, 50, 1),
                                   activation='relu', padding='same'))
     dense_model.add(MaxPooling2D(pool_size=(2, 2)))
-    dense_model.add(Convolution2D(8, (3, 3), padding='valid', activation='relu', bias_initializer='random_uniform'))
-    dense_model.add(MaxPooling2D(pool_size=(2, 2)))
     dense_model.add(Convolution2D(16, (3, 3), padding='valid', activation='relu', bias_initializer='random_uniform'))
+    dense_model.add(MaxPooling2D(pool_size=(2, 2)))
+    dense_model.add(Convolution2D(32, (3, 3), padding='valid', activation='relu', bias_initializer='random_uniform'))
     dense_model.add(MaxPooling2D(pool_size=(2, 2)))
     dense_model.add(Dropout(0.4))
     dense_model.add(Flatten())

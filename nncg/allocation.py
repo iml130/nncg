@@ -19,7 +19,7 @@ class Allocation:
         Allocation.allocations = dict()
 
     @staticmethod
-    def allocate_var(var_type, name, dim, alignment=0, init_data=None) -> Variable:
+    def allocate_var(var_type, name, dim=None, alignment=0, init_data=None) -> Variable:
         """
         Allocate a variable.
         :param var_type: Type of data, a C type like "int" or "float".

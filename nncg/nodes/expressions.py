@@ -110,7 +110,9 @@ class Variable(TreeNode):
             'float64': 'double',
             'int8': 'int8_t',
             'uint8': 'unsigned char',
-            'int16': 'int16_t'
+            'int16': 'int16_t',
+            '__m128i': '__m128i',
+            'int': 'int'
         }
         return type_map[str(t)]
 
@@ -122,7 +124,8 @@ class Variable(TreeNode):
             'float64': 64,
             'int8': 8,
             'uint8': 8,
-            'int16': 16
+            'int16': 16,
+            'int': 32
         }
         return width_map[str(t)]
 
@@ -163,6 +166,8 @@ class Variable(TreeNode):
         Get the string for defining an array.
         :return: The string.
         """
+        if self.dim is None:
+            return ''
         return ''.join(['[' + str(i + j[0] + j[1]) + ']' for i, j in zip(np.atleast_1d(self.dim), self.pads)])
 
     @staticmethod

@@ -367,7 +367,7 @@ class Edge:
 
     def replace_target_with_path(self, first_node: TreeNode, last_node: TreeNode):
         """
-        Replaces the target of this node with first_node. Then sets for all outgoing Edges of the old target
+        Replaces the target of this edge with first_node. Then sets for all outgoing Edges of the old target
         last_node as new owner. Does not touch other Edges pointing to the old target.
         :param first_node: First node of path as replacement.
         :param last_node: Last node of path as replacement.
@@ -387,13 +387,14 @@ class Edge:
         if self.inverse.owner.edges.get(self.inverse.name) == self.inverse:
             del self.inverse.owner.edges[self.inverse.name]
 
-    def insert_node(self, target: TreeNode):
+    def insert_node(self, node: TreeNode):
         """
-        Inserts
-        :param target:
-        :return:
+        Inserts between this Edge and the current target of this Edge the given node, i.e. set the node as
+        the new target and add a new Edge with the same name from the node to current target.
+        :param node: The node to be inserted.
+        :return: None.
         """
-        self.insert_path(target, target)
+        self.insert_path(node, node)
 
     def insert_path(self, first_node: TreeNode, last_node: TreeNode):
         """
@@ -404,7 +405,8 @@ class Edge:
         :return: None.
         """
         last_node.add_edge(self.name, self.target, self.n_type)
-        self.replace_target_with_path(first_node, last_node)
+        #self.replace_target_with_path(first_node, last_node)
+        self.set_target(first_node)
 
     def traverse(self, action):
         """

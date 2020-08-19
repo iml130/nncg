@@ -58,6 +58,13 @@ class SearchNodeByType(SearchNode):
             self.result.append(copy(self.cur_path_stack))
         self.cur_path_stack.pop()
 
+    @staticmethod
+    def get_next(root_node, node_type, traverse_edges=None):
+        action = SearchNodeByType(node_type)
+        action.traverse_edges = traverse_edges
+        root_node.traverse(action)
+        return action.result[0][-1]
+
 
 class SearchNodeByName(SearchNode):
     """

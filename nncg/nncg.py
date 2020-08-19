@@ -1,15 +1,14 @@
-import sys
 from keras import backend as K
 from keras.layers import Convolution2D, MaxPooling2D, Flatten, \
     Dropout, BatchNormalization, LeakyReLU, InputLayer, Dense
-import numpy as np
 
 from .nodes.cnn import *
 from .nodes.language import CHeaderNode, CFooterNode
+from .nodes.macnodeint8sse3 import MACNodeInt8SSE3
 from .nodes.misc import *
 from .nodes.controlflow import *
 from .nodes.controlflow import UnrolledOperation
-from .nodes.arithmetic import MACNodeSSE3
+from .nodes.macnodesse3 import MACNodeSSE3
 from .traverse.actions.searchnode import SearchNodeByType
 from .traverse.actions.writecaction import WriteCAction
 from .traverse.actions.quantizeaction import QuantizeAction
@@ -202,7 +201,7 @@ class NNCG:
         """
         desired_unroll = 4
         node_type = MACNode
-        self.join_loops(desired_unroll, node_type)
+        NNCG.join_loops(self.root_node, desired_unroll, node_type)
         action = SearchNodeByType(node_type)
         self.root_node.traverse(action)
         for r in action.result:
@@ -224,15 +223,23 @@ class NNCG:
         From a general architecture to SSE3 using quantized values.
         :return: None
         """
-        desired_unroll = 16
-        node_type = MACNode
-        self.join_loops(desired_unroll, node_type)
-        action = SearchNodeByType(node_type)
-        self.root_node.traverse(action)
-        for r in action.result:
-            loop_to_unroll = r[-2]
-            loop_to_unroll.unroll(desired_unroll)
 
+        action = SearchNodeByType(Conv2DNode)
+        self.root_node.traverse(action)
+        # If SSE3 operations would profit from quatization arrange everything to be able to use them. Otherwise
+        # don't touch the code, probably float SSE3
+        for n in [r[-1] for r in action.result]:
+            if MACNodeInt8SSE3.applicable(n):
+                desired_unroll = 16
+                node_type = MACNode
+                NNCG.join_loops(n, desired_unroll, node_type)
+                action = SearchNodeByType(node_type)
+                n.traverse(action)
+                for r in action.result:
+                    loop_to_unroll = r[-2]
+                    loop_to_unroll.unroll(desired_unroll)
+
+        # Now search for code where integer SSE3 could be applied. Should at least all code handled in loop above.
         action = SearchNodeByType(UnrolledOperation)
         self.root_node.traverse(action)
         CHeaderNode.instance().intel_intr_required = True
@@ -242,8 +249,10 @@ class NNCG:
             if type(node is MACNode):
                 if MACNodeInt8SSE3.applicable(node):
                     MACNodeInt8SSE3.apply(node)
+                    pass
 
-    def join_loops(self, desired_unroll, node_type):
+    @staticmethod
+    def join_loops(start_node, desired_unroll, node_type):
         """
         Join all loops in global graph required to be able to unroll them as desired, e.g. if you want to have
         MAC nodes 4 times in a tow to be able to replace them by a SIMD instruction.
@@ -252,7 +261,7 @@ class NNCG:
         :return: None.
         """
         action = SearchNodeByType(node_type)
-        self.root_node.traverse(action)
+        start_node.traverse(action)
         mac_instances = []
         for r in action.result:
             r.pop()
