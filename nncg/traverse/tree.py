@@ -86,18 +86,22 @@ class TreeNode:
         :param name: Name of the edge.
         :return: The node that is the target of the edge.
         """
+        return self.get_edge(name).target
+
+
+    def get_edge(self, name) -> Edge:
         if name in self.edges.keys():
-            return self.edges[name].target
+            return self.edges[name]
         #       Probably due to graph operations there could be single edge with that name but with trailing *.
         #       In this case that edge should be returned. Or the one that comes next regarding number of *.
         candidates = []
         for k in self.edges.keys():
-            if str(k).find(name) != -1:
+            if str(k).find(name) == 0:
                 candidates.append(k)
-        if len(candidates) != 1:
+        if len(candidates) == 0:
             raise
         else:
-            return self.edges[candidates[0]].target
+            return self.edges[candidates[0]]
 
     def get_node_by_type(self, n_type) -> List[TreeNode]:
         """
@@ -114,7 +118,13 @@ class TreeNode:
         :param name: Name of Edge.
         :return: True or False.
         """
-        return self.edges.get(name) is not None
+        candidates = []
+        for k in self.edges.keys():
+            if str(k).find(name) == 0:
+                candidates.append(k)
+        if len(candidates) != 1:
+            return False
+        return True
 
     def edge_num_by_type(self, n_type):
         """
@@ -279,7 +289,7 @@ class TreeNode:
         if action.traverse_edges is None:
             edges = self.not_inverse_edges()
         else:
-            edges = [self.edges[n] for n in action.traverse_edges if n in self.edges.keys()]
+            edges = [self.get_edge(n) for n in action.traverse_edges if self.has_edge(n)]
         for e in edges:
             e.traverse(action)
 

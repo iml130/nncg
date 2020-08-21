@@ -115,8 +115,8 @@ def VGG19_test():
 
 if __name__ == '__main__':
     # All tests do not need an image database so we just call them.
-    #no_dense()
+    no_dense()
     dense_model()
-    #strides()
-    #VGG16_test()
-    #VGG19_test()
+    strides()
+    VGG16_test()
+    VGG19_test()

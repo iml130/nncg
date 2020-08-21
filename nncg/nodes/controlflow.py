@@ -39,7 +39,7 @@ class LoopNode(Node):
         return loops, [l.get_node('var') for l in loops]
 
     @staticmethod
-    def create_loops_by_description(loops_descr: List[List[int]]) -> LoopNode:
+    def create_loops_by_description(loops_descr: List[List[int]]) -> List[LoopNode]:
         """
         Automatically creates a nested loop structure according to the description.
         :param loops_descr: Description of loop structure in the format [[start, stop, step], [start, stop, step], ...].

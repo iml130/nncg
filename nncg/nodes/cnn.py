@@ -146,6 +146,11 @@ class Conv2DNode(Node):
         self.add_edge('content', b_h_loop)
 
     def quantize(self, x_scale):
+        """
+        Quantize this node.
+        :param x_scale: A factor previously determined by quantize_scale() for scaling the weights. Used for bias here.
+        :return: None.
+        """
         min = np.min([np.min(self.w), np.min(self.b)])
         max = np.max([np.max(self.w), np.max(self.b)])
         self.scale = QuantizedNode.quantize_scale(min, max, 'int8')

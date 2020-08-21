@@ -249,6 +249,17 @@ class IndexedVariable(TreeNode):
         for i, idx in zip(indices, range(len(indices))):
             self.add_edge(str(idx), i, n_type='index')
 
+    def transpose(self, idx, include_data=True):
+        if include_data:
+            self.get_node('var').init_data = self.get_node('var').init_data.transpose(idx)
+        old_idxs = []
+        for i in idx:
+            old_idxs.append(self.get_node(str(idx[i])))
+        for i in range(len(idx)):
+            self.add_edge(str(i), old_idxs[idx[i]], n_type='index', replace=True)
+        self.get_node('var').dim = [self.get_node('var').dim[idx[i]] for i in range(len(idx))]
+        pass
+
     def __str__(self):
         """
         Get the string with Variable and indices.

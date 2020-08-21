@@ -63,7 +63,7 @@ class SearchNodeByType(SearchNode):
         action = SearchNodeByType(node_type)
         action.traverse_edges = traverse_edges
         root_node.traverse(action)
-        return action.result[0][-1]
+        return action.result[-1][-1]
 
 
 class SearchNodeByName(SearchNode):

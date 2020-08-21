@@ -21,6 +21,12 @@ class QuantizeAction(TraverseAction):
         self.dtype_required = dtype_required
 
     def _pre_action(self, edge) -> bool:
+        """
+        Called on every visited edge. Used to determine what values actual appear. Max and min of these values are
+        used later to determine the scaling factor.
+        :param edge: The edge that is currently visited.
+        :return: Always True
+        """
         t = edge.get_target()
         if type(t) is KerasLayerNode and callable(t.func):
             l = t.func([np.array(self.imdb), 0])

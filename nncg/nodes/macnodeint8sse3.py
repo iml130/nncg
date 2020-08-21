@@ -11,12 +11,22 @@ from nncg.nodes.funccall import FuncCallNode
 
 
 class Int8SSE3Preprocessing(Node):
+    """
+    Node for preprocessing before using MACNodeInt8SSE3.
+    """
     def __init__(self, H, W, C_OUT):
+        """
+        Init the Node. Immediately creates Nodes for writing C code as this node is applied after
+        general lowering.
+        :param H: Height.
+        :param W: Width.
+        :param C_OUT: Number of output channels.
+        """
         super().__init__()
         loop_descr = [
             [0, H, 1],
             [0, W, 1],
-            [0, C_OUT, 16]
+            [0, C_OUT, 1]
         ]
         l = LoopNode.create_loops_by_description(loop_descr)
         self.add_edge('content', l[0])
@@ -32,7 +42,19 @@ class Int8SSE3Preprocessing(Node):
 
 
 class Int8SSE3Postprocessing(Node):
+    """
+    Node for postprocessing after using MACNodeInt8SSE3.
+    """
     def __init__(self, res_var, sse_var, H, W, C_OUT):
+        """
+        Init the Node. Immediately creates Nodes for writing C code as this node is applied after
+        general lowering.
+        :param res_var:
+        :param sse_var:
+        :param H:
+        :param W:
+        :param C_OUT:
+        """
         super().__init__()
         loop_descr = [
             [0, H, 1],
@@ -56,13 +78,14 @@ class Int8SSE3Postprocessing(Node):
         l3 = AssignmentNode(sum1_var, Expression('_mm_hadd_epi32({hi}, {lo});', lo=lo_var, hi=hi_var), l2)
         sum2_var = Allocation.allocate_var('__m128i', 'sum2')
         l4 = AssignmentNode(sum2_var, Expression('_mm_hadd_epi32({sum1}, {sum1});', sum1=sum1_var), l3)
-        temp_var = Allocation.allocate_var('int', 'temp_res', [2])
+        temp_var = Allocation.allocate_var('int', 'temp_res', [4])
         l5 = FuncCallNode(Expression('_mm_store_si128((__m128i*)&{res}, {sum2});', res=temp_var, sum2=sum2_var), l4)
         temp_var_idx_0 = IndexedVariable(temp_var)
         temp_var_idx_0.set_indices([Constant('0')])
         temp_var_idx_1 = IndexedVariable(temp_var)
         temp_var_idx_1.set_indices([Constant('1')])
-        l6 = AddNode(res_var_idx, temp_var_idx_0, temp_var_idx_1, l5)
+        l6 = AddNode(res_var_idx, res_var_idx, temp_var_idx_0, l5)
+        l7 = AddNode(res_var_idx, res_var_idx, temp_var_idx_1, l6)
         l[2].add_edge('content', l1)
         CHeaderNode.instance().var_decls.append(lo_var)
         CHeaderNode.instance().var_decls.append(hi_var)
@@ -76,7 +99,7 @@ class MACNodeInt8SSE3(MACNode, Optimization):
     Node for a quad multiply and accumulate for SSE3 CPUs.
     """
     snippet = '''{{
-    __m128 w, x, y;
+    __m128i w, x, y;
     x = _mm_lddqu_si128((__m128i*)&{var2});
     w = _mm_lddqu_si128((__m128i*)&{var1});
     x = _mm_maddubs_epi16(x, w);
@@ -96,7 +119,11 @@ class MACNodeInt8SSE3(MACNode, Optimization):
         """
 
         if type(other) == Conv2DNode:
-            if other.C_IN * other.KH * other.KW < 16:
+            # ToDo: First step, let it working without loop joining, probably could be possible to join
+            #       KH, KW, C_IN
+            #if other.C_IN * other.KH * other.KW < 16:
+            #    return False
+            if other.C_IN < 16:
                 return False
         elif type(other) == MACNode:
             unrolled_op: UnrolledOperation = other.get_node('!content')
@@ -108,11 +135,11 @@ class MACNodeInt8SSE3(MACNode, Optimization):
 
             # Check  if the 16 MACs write to res_var in a row as this is done by the pattern above
             v = unrolled_op.get_all_vars('res_var')
-            if [pattern[_v][0] for _v in v] != [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]:
+            if [pattern[_v][0] for _v in v] != [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]:
                 return False
 
             # Check data types
-            if unrolled_op.orig_op.get_node('res_var').get_node('var').type != 'int16':
+            if unrolled_op.orig_op.get_node('res_var').get_node('var').type != 'int':
                 return False
 
             if unrolled_op.orig_op.get_node('var1').get_node('var').type != 'int8':
@@ -120,12 +147,6 @@ class MACNodeInt8SSE3(MACNode, Optimization):
 
             if unrolled_op.orig_op.get_node('var2').get_node('var').type != 'uint8':
                 return False
-
-        # We need h w cout cin for w, so we transpose var1
-
-        # Before unrolling we have to exchange the last two loops because we need to unroll the second innerst loop
-        # by changing the 'content' edges. All other edges must be unchanged as e.g. edges to counter variables have
-        # to change postiion with its loops.
 
         return True
 

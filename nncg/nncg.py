@@ -158,16 +158,22 @@ class NNCG:
 
             res = 0
             c_res = 0
+            res_list = []
+            c_res_list = []
             for n in self.test_nodes:
                 res, c_res = n.test(im, exit_on_err=test_mode == 'error')
+                res_list.append(res)
+                c_res_list.append(c_res)
             tested += 1
             if test_mode == 'classification':
                 if np.argmax(res) != np.argmax(c_res):
                     fail += 1
             elif test_mode == 'regression':
                 pass
+            percent_err = '{:.1f}'.format(((tested - fail) / tested * 100))
+            err_overview = str(['{:.3f}'.format(np.max(a - b)) for a,b in zip(res_list, c_res_list)])
             print_progress_bar(tested, testing,
-                               suffix=", " + str((tested - fail) / tested * 100) + "% ok",
+                               suffix=", " + percent_err + "% ok, errors: " + err_overview,
                                prefix='Evaluating')
         Allocation.reset()
         CHeaderNode.instance().reset()
@@ -227,12 +233,21 @@ class NNCG:
         action = SearchNodeByType(Conv2DNode)
         self.root_node.traverse(action)
         # If SSE3 operations would profit from quatization arrange everything to be able to use them. Otherwise
-        # don't touch the code, probably float SSE3
+        # don't touch the code, probably float SSE3 will work and applied later
         for n in [r[-1] for r in action.result]:
             if MACNodeInt8SSE3.applicable(n):
                 desired_unroll = 16
                 node_type = MACNode
-                NNCG.join_loops(n, desired_unroll, node_type)
+                # ToDo: First step, let it working without loop joining, probably it could be possible to join
+                #       KH, KW, C_IN
+                # NNCG.join_loops(n, desired_unroll, node_type)
+                action = SearchNodeByType(node_type)
+                n.traverse(action)
+                r = action.result[0]
+                r[-1].get_node('var1').transpose([0,1,3,2])
+                r[-4].add_edge('content', r[-2], replace=True)
+                r[-2].add_edge('content', r[-3], replace=True)
+                r[-3].add_edge('content', r[-1], replace=True)
                 action = SearchNodeByType(node_type)
                 n.traverse(action)
                 for r in action.result:
@@ -250,6 +265,7 @@ class NNCG:
                 if MACNodeInt8SSE3.applicable(node):
                     MACNodeInt8SSE3.apply(node)
                     pass
+
 
     @staticmethod
     def join_loops(start_node, desired_unroll, node_type):
@@ -277,7 +293,7 @@ class NNCG:
             for _mac in mi:
                 depth += _mac.stop
                 loops_to_join.append(_mac)
-                if depth > desired_unroll:
+                if depth >= desired_unroll:
                     break
             mac_instances[mac_instances.index(mi)] = loops_to_join
         for i in mac_instances:
