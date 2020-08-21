@@ -81,15 +81,21 @@ class TreeNode:
 
     def get_node(self, name) -> TreeNode:
         """
-        Get the target of the edge with this name. As the name is unique (probably due to trailing stars) it is
-        a single node.
+        Get the target of the edge with this name. See get_edge() for more details.
         :param name: Name of the edge.
         :return: The node that is the target of the edge.
         """
         return self.get_edge(name).target
 
-
     def get_edge(self, name) -> Edge:
+        """
+        Get the Edge with the given name. Gives an exception if an Edge with that name does not exist. Name of
+        edges may have trailing * as names must be unique. If there is only one Edge of that name but with trailing
+        * that edge will be returned. If there are more than one Edge with that name and different numbers of *
+        the exact name with all * must be given.
+        :param name: Name of the Edge.
+        :return: The edge.
+        """
         if name in self.edges.keys():
             return self.edges[name]
         #       Probably due to graph operations there could be single edge with that name but with trailing *.
@@ -415,7 +421,7 @@ class Edge:
         :return: None.
         """
         last_node.add_edge(self.name, self.target, self.n_type)
-        #self.replace_target_with_path(first_node, last_node)
+        # self.replace_target_with_path(first_node, last_node)
         self.set_target(first_node)
 
     def traverse(self, action):

@@ -69,6 +69,9 @@ class NNCG:
         self.model = model
         input_shape = model.layers[0].input.shape[1:].as_list()
 
+        STEPS = 7
+        print_progress_bar(0, STEPS, prefix='Adding CNN nodes to graph')
+
         self.root_node = Edge('root', CHeaderNode(identifier, input_shape, weights_method), None, 'forward')
 
         cur_node = MeanNode(image_mean, self.root_node.target)
@@ -77,7 +80,6 @@ class NNCG:
         # Read the Keras model layer by layer and add it to the graph
 
         for i, layer in enumerate(model.layers):
-            print_progress_bar(i, len(model.layers), prefix='Generating code')
             if type(layer) == Convolution2D:
                 cur_node = self.add_conv2d(layer, cur_node)
             elif type(layer) == MaxPooling2D:
@@ -102,15 +104,18 @@ class NNCG:
 
         # Quantization must be done before lowering as datatyes generated
         # depend on it.
+        print_progress_bar(1, STEPS, prefix='Quantization')
         if quatization:
             if arch == 'sse3':
                 self.quantize(imdb, 'uint8')
 
         # Read in finished, lower to nodes that can be expressed in C.
+        print_progress_bar(2, STEPS, prefix='Lowering')
         self.abstract_to_c()
 
         # Now convert the graph to the desired architecture. This will heavily change in future
         # when more architectures are supported.
+        print_progress_bar(3, STEPS, prefix='Quantization 2nd phase')
         if arch == 'general':
             pass
         elif arch == 'sse3':
@@ -120,25 +125,22 @@ class NNCG:
             else:
                 self.to_sse3()
 
-        print("")
-        print("Writing...")
-
+        print_progress_bar(4, STEPS, prefix='Writing C code')
         self.write_c(path)
+        print_progress_bar(5, STEPS, prefix='Compiling')
 
-        print("Checking compiler version ...")
         if os.system(compiler_check) == 1:
             print("Compiler not found, not checking code file --> Finished.")
             sys.exit(0)
         if testing == 0:
-            print("Finished")
+            print_progress_bar(STEPS, STEPS, prefix='Finished')
             sys.exit(0)
         if testing == -1:
             testing = len(imdb)
-        print("Compiling...")
+        print_progress_bar(6, STEPS, prefix='Compiling')
 
         compile(path, optimize=False)
-
-        print("Generation successful. Testing...")
+        print_progress_bar(STEPS, STEPS, prefix='Finished')
         tested = 0
         fail = 0
         for im in np.random.permutation(imdb):
@@ -171,7 +173,7 @@ class NNCG:
             elif test_mode == 'regression':
                 pass
             percent_err = '{:.1f}'.format(((tested - fail) / tested * 100))
-            err_overview = str(['{:.3f}'.format(np.max(a - b)) for a,b in zip(res_list, c_res_list)])
+            err_overview = str(['{:.3f}'.format(np.max(a - b)) for a, b in zip(res_list, c_res_list)])
             print_progress_bar(tested, testing,
                                suffix=", " + percent_err + "% ok, errors: " + err_overview,
                                prefix='Evaluating')
@@ -244,7 +246,7 @@ class NNCG:
                 action = SearchNodeByType(node_type)
                 n.traverse(action)
                 r = action.result[0]
-                r[-1].get_node('var1').transpose([0,1,3,2])
+                r[-1].get_node('var1').transpose([0, 1, 3, 2])
                 r[-4].add_edge('content', r[-2], replace=True)
                 r[-2].add_edge('content', r[-3], replace=True)
                 r[-3].add_edge('content', r[-1], replace=True)
@@ -264,8 +266,6 @@ class NNCG:
             if type(node is MACNode):
                 if MACNodeInt8SSE3.applicable(node):
                     MACNodeInt8SSE3.apply(node)
-                    pass
-
 
     @staticmethod
     def join_loops(start_node, desired_unroll, node_type):

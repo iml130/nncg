@@ -12,7 +12,6 @@ def load_imdb(imgdb_path):
     :param imgdb_path: Path the the base file. Second file will be the path with appended ".x".
     :return: The image database.
     """
-    print("Loading imdb...")
     images = {}
     with open(imgdb_path, "rb") as f:
         images["mean"] = pickle.load(f)

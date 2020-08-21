@@ -1,10 +1,14 @@
 #!/usr/bin/env python3
-
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+os.environ['TF_CPP_MIN_VLOG_LEVEL'] = '3'
+import tensorflow as tf
 import argparse
 from keras.models import load_model
 from nncg.nncg import NNCG
 from applications.daimler.loader import load_imdb
 
+tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 parser = argparse.ArgumentParser(description='Train the network given ')
 
 parser.add_argument('-b', '--database-path', dest='imgdb_path',
