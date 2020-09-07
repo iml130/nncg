@@ -26,7 +26,7 @@ class MACNodeSSE3(MACNode, Optimization):
         :param other: The MACNode to be replaced.
         :return: True or False.
         """
-        unrolled_op: UnrolledOperation = other.get_node('!content')
+        unrolled_op: UnrolledOperation = other.get_node('!content').get_node('!content')
 
         # The UnrolledOperation must execute 4 MACNodes in a row that are then replaced.
         if unrolled_op.times != 4:
@@ -44,13 +44,11 @@ class MACNodeSSE3(MACNode, Optimization):
             return False
 
         # Check data types
-        if unrolled_op.orig_loop.get_node('res_var').get_node('var').type != 'float':
+
+        if str(other.get_node('var1').get_type())[0:5] != 'float':
             return False
 
-        if unrolled_op.orig_loop.get_node('var1').get_node('var').type != 'float':
-            return False
-
-        if unrolled_op.orig_loop.get_node('var2').get_node('var').type != 'float':
+        if str(other.get_node('var1').get_type())[0:5] != 'float':
             return False
 
         return True

@@ -3,7 +3,6 @@ from nncg.nodes.controlflow import LoopNode
 from nncg.allocation import Allocation
 from nncg.nodes.expressions import IndexedVariable, Constant
 from nncg.nodes.arithmetic import MultNode
-from nncg.nodes.language import CHeaderNode
 from nncg.nodes.misc import AlternativesNode
 
 

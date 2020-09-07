@@ -142,10 +142,10 @@ class MACNodeInt8SSE3(MACNode, Optimization):
             macnode = unrolled_op.get_node('content').get_node('content')
 
         # Check data types
-        if macnode.get_node('var1').get_node('var').type != 'int8':
+        if macnode.get_node('var1').get_type() != 'int8':
             return False
 
-        if macnode.get_node('var2').get_node('var').type != 'uint8':
+        if macnode.get_node('var2').get_type() != 'uint8':
             return False
 
         return True

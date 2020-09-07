@@ -122,6 +122,7 @@ class NNCG:
         elif arch == 'sse3':
             if quatization:
                 self.to_quantized_sse3()
+                self.to_sse3()
             else:
                 self.to_sse3()
 
@@ -214,7 +215,8 @@ class NNCG:
         self.root_node.traverse(action)
         for r in action.result:
             loop_to_unroll = r[-2]
-            loop_to_unroll.unroll(desired_unroll)
+            if loop_to_unroll.step == 1:
+                loop_to_unroll.unroll(desired_unroll)
 
         action = SearchNodeByType(UnrolledOperation)
         self.root_node.traverse(action)
@@ -222,9 +224,11 @@ class NNCG:
         for r in action.result:
             u: UnrolledOperation = r[-1]
             node = u.get_node('content')
-            if type(node is MACNode):
-                if MACNodeSSE3.applicable(node):
-                    MACNodeSSE3.apply(node)
+            if type(node) is LoopNode:
+                node = node.get_node('content')
+                if type(node) is MACNode:
+                    if MACNodeSSE3.applicable(node):
+                        MACNodeSSE3.apply(node)
 
     def to_quantized_sse3(self):
         """
