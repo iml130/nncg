@@ -4,9 +4,10 @@ from nncg.allocation import Allocation
 from nncg.nodes.expressions import IndexedVariable, Constant
 from nncg.nodes.arithmetic import MultNode
 from nncg.nodes.language import CHeaderNode
+from nncg.nodes.misc import AlternativesNode
 
 
-class QuantizedNode(Node):
+class QuantizedNode(AlternativesNode):
     def __init__(self, node: Node, x_scale, prev_keras_node, dtype):
         """
         Init the node.
@@ -15,17 +16,19 @@ class QuantizedNode(Node):
         :param prev_keras_node: The last KerasLayerNode. Required for quantization.
         :param dtype: Target data type to quantize to.
         """
-        super().__init__()
-
-        node.replace_self_with_path(self, self)
+        super().__init__(node)
+        self.takeover_out_edges_from(node)
+        node = node.copy()
         q_node = QuantizeNode(x_scale, prev_keras_node, dtype)
         node.in_var = q_node.out_var
-        self.add_edge('content', q_node)
+        self.add_alternative(q_node)
         q_node.add_edge('next', node)
+        node.quantize(x_scale)
         w_scale = node.scale
-        deq_node = DequantizeNode(w_scale, x_scale, node)
+        next_node = self.get_node('next')
+        deq_node = DequantizeNode(w_scale, x_scale, next_node, node)
         node.add_edge('next', deq_node)
-        assert self.get_node('next').in_dim == deq_node.out_dim
+        assert next_node.in_dim == deq_node.out_dim
         self.get_node('next').in_var = deq_node.out_var
 
 
@@ -92,14 +95,14 @@ class QuantizeNode(Node):
         div_node = MultNode(out_var_idx, in_var_idx, Constant(1 / self.x_scale))
         loops[-1].add_edge('content', div_node)
         self.add_edge('content', loops[0])
-        CHeaderNode.instance().var_decls.append(self.out_var)
+        self.var_decls.append(self.out_var)
 
 
 class DequantizeNode(Node):
     """
     Class for converting quantized values to float again.
     """
-    def __init__(self, const_scale, x_scale, prev_node):
+    def __init__(self, const_scale, x_scale, next_node, prev_node):
         """
         Init the node.
         :param const_scale: Scaling factor used for quantizing the constant weights.
@@ -110,7 +113,7 @@ class DequantizeNode(Node):
         self.in_var = prev_node.out_var
         self.in_dim = prev_node.out_dim
         self.out_dim = self.in_dim
-        self.out_var = Allocation.allocate_var('float', 'x', self.out_dim)
+        self.out_var = next_node.in_var
         self.x_scale = x_scale
         self.const_scale = const_scale
 
@@ -129,4 +132,3 @@ class DequantizeNode(Node):
         div_node = MultNode(out_var_idx, in_var_idx, Constant(self.x_scale * self.const_scale))
         loops[-1].add_edge('content', div_node)
         self.add_edge('content', loops[0])
-        CHeaderNode.instance().var_decls.append(self.out_var)

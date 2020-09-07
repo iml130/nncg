@@ -18,6 +18,7 @@ def compile(path, optimize=False):
     :return:
     """
     c = compiler_O3 if optimize else compiler
-    if os.system(c + path + " -o " + path[:path.rfind('.')]) != 0:
-        print("Error compiling file.")
+    cmd = c + path + " -o " + path[:path.rfind('.')]
+    if os.system(cmd) != 0:
+        print("Error compiling file with command: ", cmd)
         sys.exit(3)

@@ -38,22 +38,22 @@ class Int8SSE3Preprocessing(Node):
         sse_var_idx.set_indices([h_idx, w_idx, c_idx])
         an = AssignmentNode(sse_var_idx, Expression('_mm_setzero_ps()'))
         l[2].add_edge('content', an)
-        CHeaderNode.instance().var_decls.append(self.sse_var)
+        self.var_decls.append(self.sse_var)
 
 
 class Int8SSE3Postprocessing(Node):
     """
-    Node for postprocessing after using MACNodeInt8SSE3.
+    Node for postprocessing after using MACNodeInt8SSE3. For internal use by MACNodeInt8SSE3.
     """
     def __init__(self, res_var, sse_var, H, W, C_OUT):
         """
         Init the Node. Immediately creates Nodes for writing C code as this node is applied after
         general lowering.
-        :param res_var:
-        :param sse_var:
-        :param H:
-        :param W:
-        :param C_OUT:
+        :param res_var: The Variable that is the output of the original Node that was quantized.
+        :param sse_var: The Variable for storing the intermediate quantized results.
+        :param H: Output height.
+        :param W: Output width.
+        :param C_OUT: Channels out.
         """
         super().__init__()
         loop_descr = [
@@ -87,11 +87,11 @@ class Int8SSE3Postprocessing(Node):
         l6 = AddNode(res_var_idx, res_var_idx, temp_var_idx_0, l5)
         l7 = AddNode(res_var_idx, res_var_idx, temp_var_idx_1, l6)
         l[2].add_edge('content', l1)
-        CHeaderNode.instance().var_decls.append(lo_var)
-        CHeaderNode.instance().var_decls.append(hi_var)
-        CHeaderNode.instance().var_decls.append(sum1_var)
-        CHeaderNode.instance().var_decls.append(sum2_var)
-        CHeaderNode.instance().var_decls.append(temp_var)
+        self.var_decls.append(lo_var)
+        self.var_decls.append(hi_var)
+        self.var_decls.append(sum1_var)
+        self.var_decls.append(sum2_var)
+        self.var_decls.append(temp_var)
 
 
 class MACNodeInt8SSE3(MACNode, Optimization):
@@ -125,8 +125,9 @@ class MACNodeInt8SSE3(MACNode, Optimization):
             #    return False
             if other.C_IN < 16:
                 return False
+            macnode = SearchNodeByType.get_next(other, MACNode, ['content', 'next'])
         elif type(other) == MACNode:
-            unrolled_op: UnrolledOperation = other.get_node('!content')
+            unrolled_op: UnrolledOperation = other.get_node('!content').get_node('!content')
 
             # The UnrolledOperation must execute 16 MACNodes in a row that are then replaced.
             if unrolled_op.times != 16:
@@ -138,15 +139,14 @@ class MACNodeInt8SSE3(MACNode, Optimization):
             if [pattern[_v][0] for _v in v] != [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]:
                 return False
 
-            # Check data types
-            if unrolled_op.orig_op.get_node('res_var').get_node('var').type != 'int':
-                return False
+            macnode = unrolled_op.get_node('content').get_node('content')
 
-            if unrolled_op.orig_op.get_node('var1').get_node('var').type != 'int8':
-                return False
+        # Check data types
+        if macnode.get_node('var1').get_node('var').type != 'int8':
+            return False
 
-            if unrolled_op.orig_op.get_node('var2').get_node('var').type != 'uint8':
-                return False
+        if macnode.get_node('var2').get_node('var').type != 'uint8':
+            return False
 
         return True
 

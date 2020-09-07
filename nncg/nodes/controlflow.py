@@ -4,7 +4,7 @@ import math
 import numpy as np
 from nncg.allocation import Allocation
 from nncg.nodes.expressions import *
-from nncg.nodes.misc import Node
+from nncg.nodes.misc import Node, AlternativesNode
 from nncg.traverse.actions.replaceexpression import ReplaceExpression
 from nncg.traverse.actions.deepcopy import DeepCopyLoop
 from nncg.traverse.actions.searchnode import SearchNodeByName
@@ -267,21 +267,20 @@ class LoopNode(Node):
         return dlen
 
 
-class UnrolledOperation(Node):
+class UnrolledOperation(AlternativesNode):
     """
     Abstract node to store meta information about an unroll operation that was performed at the point where
     this Node can be found.
     """
+
     def __init__(self, loop: LoopNode):
         """
         Initialize the node. This does not add it to the graph.
         :param loop: The loop to be unrolled.
         """
-        super().__init__()
-        op = loop.get_node('content')
-        var = loop.get_node('var')
-        self.add_edge('content', op)
-        self.add_edge('unrolled_var', var, 'legacy')
+        super().__init__(loop)
+        self.orig_loop = loop
+        self.var = loop.get_node('var')
 
     def unroll(self, times):
         """
@@ -290,16 +289,15 @@ class UnrolledOperation(Node):
         :return: None
         """
         self.times = times
-        orig_op = self.get_node('content')
-        self.orig_op = orig_op
-        original_content = DeepCopy.deep_copy(orig_op)
-        var_to_replace = self.get_node('unrolled_var')
-        end_of_chain = orig_op.search_path_end('next')
+        original_content = DeepCopy.deep_copy(self.orig_loop)
+        self.add_alternative(original_content)
+        var_to_replace = self.var
+        end_of_chain = self.orig_loop.get_node('content').search_path_end('next')
         # Every time we add the operations for a single unroll our offset to the original variable increases.
         for offset in range(1, times):
             var_w_offset = Expression('({var} + ' + str(offset) + ')', var=var_to_replace)
             replace_action = ReplaceExpression(var_to_replace, var_w_offset)
-            nodes_copy = DeepCopy.deep_copy(original_content)
+            nodes_copy = DeepCopy.deep_copy(original_content.get_node('content'))
             nodes_copy.traverse(replace_action)
             end_of_chain.add_edge('next', nodes_copy)
             end_of_chain = end_of_chain.search_path_end('next')
@@ -314,8 +312,6 @@ class UnrolledOperation(Node):
         """
         unrolled_op = UnrolledOperation(loop)
         unrolled_op.unroll(times)
-        loop.remove_edge('content')
-        loop.add_edge('content', unrolled_op)
 
     def get_access_pattern(self, pattern_len) -> Optional[Dict[IndexedVariable, List[int]]]:
         """
@@ -323,17 +319,19 @@ class UnrolledOperation(Node):
         :param pattern_len: How many accesses you want to see per IndexedVariable?
         :return: The pattern. It's a dictionary where the IndexedVariable are the keys with a list of offsets as data.
         """
-        n = self
-        loops = []
+        n = self.get_node('content')
+        loops = [n]
         while n.has_edge('!content'):
             n = n.get_node('!content')
-            if type(n) is not LoopNode:
+            if type(n) is UnrolledOperation:
+                pass
+            elif type(n) is not LoopNode:
                 return None
             else:
                 loops.append(n)
         loops = list(reversed(loops))
 
-        _n = self.get_node('content')
+        _n = self.get_node('content').get_node('content')
         pattern = {}
 
         # Assuming that two/three address nodes are not mixed as content
@@ -357,7 +355,7 @@ class UnrolledOperation(Node):
         :param name: The name of the edge to get the Variable.
         :return: List of Variables.
         """
-        _n = self.get_node('content')
+        _n = self.get_node('content').get_node('content')
         _vars = []
         while True:
             _vars.append(_n.get_node(name))

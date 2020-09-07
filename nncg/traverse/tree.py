@@ -102,12 +102,15 @@ class TreeNode:
         #       In this case that edge should be returned. Or the one that comes next regarding number of *.
         candidates = []
         for k in self.edges.keys():
-            if str(k).find(name) == 0:
+            if self.edges[k].name_equal(name):
                 candidates.append(k)
         if len(candidates) == 0:
             raise
         else:
             return self.edges[candidates[0]]
+
+    def get_edges_to(self, node) -> List[Edge]:
+        return [e for e in self.edges.values() if e.target == node]
 
     def get_node_by_type(self, n_type) -> List[TreeNode]:
         """
@@ -124,9 +127,11 @@ class TreeNode:
         :param name: Name of Edge.
         :return: True or False.
         """
+        if name in self.edges.keys():
+            return True
         candidates = []
         for k in self.edges.keys():
-            if str(k).find(name) == 0:
+            if self.edges[k].name_equal(name):
                 candidates.append(k)
         if len(candidates) != 1:
             return False
@@ -292,10 +297,15 @@ class TreeNode:
         :param action: The action to execute while visiting die Edges.
         :return: None.
         """
+        from nncg.quantization import QuantizedNode
+        from nncg.traverse.actions.lower import LowerAction
         if action.traverse_edges is None:
             edges = self.not_inverse_edges()
-        else:
+        elif type(action.traverse_edges) is list:
             edges = [self.get_edge(n) for n in action.traverse_edges if self.has_edge(n)]
+        else:  # Now assume it is a lambda
+            edges = [n for n in self.edges.values() if action.traverse_edges(n)]
+
         for e in edges:
             e.traverse(action)
 
@@ -355,6 +365,9 @@ class Edge:
         :return: The target.
         """
         return self.target
+
+    def name_equal(self, name):
+        return self.name.find(name) == 0
 
     def add_inverse_edge(self):
         """
@@ -421,7 +434,6 @@ class Edge:
         :return: None.
         """
         last_node.add_edge(self.name, self.target, self.n_type)
-        # self.replace_target_with_path(first_node, last_node)
         self.set_target(first_node)
 
     def traverse(self, action):

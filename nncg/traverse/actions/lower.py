@@ -11,7 +11,7 @@ class LowerAction(TraverseAction):
         Init this class.
         """
         super().__init__()
-        self.traverse_edges = ['next', 'content']
+        self.traverse_edges = lambda n: n.name_equal('next') or n.name_equal('content') or n.n_type == 'alternative'
 
     def _post_action(self, edge) -> bool:
         """

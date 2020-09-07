@@ -44,13 +44,13 @@ class MACNodeSSE3(MACNode, Optimization):
             return False
 
         # Check data types
-        if unrolled_op.orig_op.get_node('res_var').get_node('var').type != 'float':
+        if unrolled_op.orig_loop.get_node('res_var').get_node('var').type != 'float':
             return False
 
-        if unrolled_op.orig_op.get_node('var1').get_node('var').type != 'float':
+        if unrolled_op.orig_loop.get_node('var1').get_node('var').type != 'float':
             return False
 
-        if unrolled_op.orig_op.get_node('var2').get_node('var').type != 'float':
+        if unrolled_op.orig_loop.get_node('var2').get_node('var').type != 'float':
             return False
 
         return True

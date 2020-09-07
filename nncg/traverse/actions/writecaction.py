@@ -6,6 +6,7 @@ class WriteCAction(TraverseAction):
     """
     Action for writing C code. Only used once in main function.
     """
+
     def __init__(self, path):
         """
         Init the action.
@@ -31,7 +32,7 @@ class WriteCAction(TraverseAction):
         :param edge:
         :return: Always True.
         """
-        if edge.name is 'content':
+        if edge.name_equal('content'):
             edge.owner.write_c_leave()
         return True
 

@@ -13,6 +13,7 @@ from .traverse.actions.searchnode import SearchNodeByType
 from .traverse.actions.writecaction import WriteCAction
 from .traverse.actions.quantizeaction import QuantizeAction
 from .traverse.actions.lower import LowerAction
+from .traverse.actions.collectvars import CollectVars
 from .traverse.tree import Edge
 from .compilercmds import compile, compiler_check
 from .tools import print_progress_bar
@@ -102,7 +103,7 @@ class NNCG:
 
         CFooterNode(exe_return_filename, weights_method, cur_node)
 
-        # Quantization must be done before lowering as datatyes generated
+        # Quantization must be done before lowering as datatypes generated
         # depend on it.
         print_progress_bar(1, STEPS, prefix='Quantization')
         if quatization:
@@ -121,7 +122,6 @@ class NNCG:
         elif arch == 'sse3':
             if quatization:
                 self.to_quantized_sse3()
-                pass
             else:
                 self.to_sse3()
 
@@ -232,40 +232,47 @@ class NNCG:
         :return: None
         """
 
-        action = SearchNodeByType(Conv2DNode)
-        self.root_node.traverse(action)
+        conv_search = SearchNodeByType(Conv2DNode)
+        incl_alternatives = lambda n: n.name_equal('next') or n.name_equal('content') or n.n_type == 'alternative'
+        conv_search.traverse_edges = incl_alternatives
+        self.root_node.traverse(conv_search)
         # If SSE3 operations would profit from quatization arrange everything to be able to use them. Otherwise
         # don't touch the code, probably float SSE3 will work and applied later
-        for n in [r[-1] for r in action.result]:
+        for n in [r[-1] for r in conv_search.result]:
             if MACNodeInt8SSE3.applicable(n):
                 desired_unroll = 16
                 node_type = MACNode
                 # ToDo: First step, let it working without loop joining, probably it could be possible to join
                 #       KH, KW, C_IN
                 # NNCG.join_loops(n, desired_unroll, node_type)
-                action = SearchNodeByType(node_type)
-                n.traverse(action)
-                r = action.result[0]
+                mac_search = SearchNodeByType(node_type)
+                n.traverse(mac_search)
+                r = mac_search.result[0] 
                 r[-1].get_node('var1').transpose([0, 1, 3, 2])
                 r[-4].add_edge('content', r[-2], replace=True)
                 r[-2].add_edge('content', r[-3], replace=True)
                 r[-3].add_edge('content', r[-1], replace=True)
-                action = SearchNodeByType(node_type)
-                n.traverse(action)
-                for r in action.result:
+                mac_search = SearchNodeByType(node_type)
+                n.traverse(mac_search)
+                for r in mac_search.result:
                     loop_to_unroll = r[-2]
                     loop_to_unroll.unroll(desired_unroll)
 
         # Now search for code where integer SSE3 could be applied. Should at least all code handled in loop above.
-        action = SearchNodeByType(UnrolledOperation)
-        self.root_node.traverse(action)
+        mac_search = SearchNodeByType(UnrolledOperation)
+        mac_search.traverse_edges = incl_alternatives
+        self.root_node.traverse(mac_search)
         CHeaderNode.instance().intel_intr_required = True
-        for r in action.result:
+        for r in mac_search.result:
             u: UnrolledOperation = r[-1]
-            node = u.get_node('content')
+            node = u.get_node('content').get_node('content')
             if type(node is MACNode):
                 if MACNodeInt8SSE3.applicable(node):
                     MACNodeInt8SSE3.apply(node)
+                    last_qn = [i for i in range(len(r)) if type(r[i]) is QuantizedNode][-1]
+                    source_node = r[last_qn]
+                    target_node = r[last_qn + 1]
+                    source_node.select(target_node)
 
     @staticmethod
     def join_loops(start_node, desired_unroll, node_type):
@@ -325,6 +332,8 @@ class NNCG:
         :param path: File to write to.
         :return: None.
         """
+        action = CollectVars(self.root_node.target)
+        self.root_node.traverse(action)
         a = WriteCAction(path)
         self.root_node.traverse(a)
 

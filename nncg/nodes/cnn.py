@@ -1,8 +1,6 @@
-import numpy as np
 from nncg.nodes.arithmetic import *
 from nncg.nodes.misc import *
 from nncg.nodes.controlflow import LoopNode
-from nncg.nodes.language import CHeaderNode
 from nncg.allocation import Allocation
 from nncg.tools import _len
 from nncg.quantization import QuantizedNode
@@ -138,9 +136,9 @@ class Conv2DNode(Node):
         c_out_loop.add_edge('content', mac_node)
 
         # These variables must be declared (partially with initial data) at the beginning of the function
-        CHeaderNode.instance().var_decls.append(self.out_var)
-        CHeaderNode.instance().const_decls.append(w_var)
-        CHeaderNode.instance().const_decls.append(b_var)
+        self.var_decls.append(self.out_var)
+        self.const_decls.append(w_var)
+        self.const_decls.append(b_var)
 
         # Don't remove this node, just put everything as content to this node.
         self.add_edge('content', b_h_loop)
@@ -156,7 +154,7 @@ class Conv2DNode(Node):
         self.scale = QuantizedNode.quantize_scale(min, max, 'int8')
         self.w = (self.w / self.scale).astype('int8')
         self.b = (self.b / self.scale / x_scale).astype('int16')
-        self.out_var.type = 'int'
+        #self.out_var.type = 'int'
 
 
 class LeakyReLUNode(Node):
@@ -196,10 +194,10 @@ class LeakyReLUNode(Node):
             false_exp = Expression('{alpha} * {t_var_idx}', t_var_idx=in_var_idx)
         cond_node = ConditionalNode(out_var_idx, condition, false_exp, in_var_idx)
         loops[-1].add_edge('content', cond_node)
-        CHeaderNode.instance().var_decls.append(self.out_var)
+        self.var_decls.append(self.out_var)
 
         # Meta information of this node not required yet, so delete this node and replace it with the loops.
-        self.replace_self_with_path(loops[0], loops[0])
+        self.add_edge('content', loops[0])
 
 
 class DenseNode(Node):
@@ -260,12 +258,12 @@ class DenseNode(Node):
         in_loop.add_edge('content', out_loop)
         out_loop.add_edge('content', mac_node)
 
-        CHeaderNode.instance().var_decls.append(self.out_var)
-        CHeaderNode.instance().const_decls.append(w_var)
-        CHeaderNode.instance().const_decls.append(b_var)
+        self.var_decls.append(self.out_var)
+        self.const_decls.append(w_var)
+        self.const_decls.append(b_var)
 
         # Meta data not required yet so remove this node
-        self.replace_self_with_path(b_loop, in_loop)
+        self.add_edge('content', b_loop)
 
 
 class FlattenNode(Node):
@@ -290,8 +288,8 @@ class FlattenNode(Node):
         :return: None.
         """
         n = AssignmentNode(self.out_var, self.in_var)
-        CHeaderNode.instance().pointer_decls.append(self.out_var)
-        self.replace_self_with_path(n, n)
+        self.pointer_decls.append(self.out_var)
+        self.add_edge('content', n)
 
 
 class MaxPoolingNode(Node):
@@ -360,9 +358,8 @@ class MaxPoolingNode(Node):
         condition = Expression('{var_in} > {var_out}', var_in=in_var_idx, var_out=out_var_idx)
         n = ConditionalNode(out_var_idx, condition, in_var_idx, out_var_idx)
         kw_loop.add_edge('content', n)
-        # Meta data not required yet so remove this node
-        self.replace_self_with_path(h_loop, h_loop)
-        CHeaderNode.instance().var_decls.append(self.out_var)
+        self.add_edge('content', h_loop)
+        self.var_decls.append(self.out_var)
 
 
 class SoftmaxNode(Node):
@@ -412,12 +409,11 @@ class SoftmaxNode(Node):
         loops[-1].add_edge('content', node)
         sum_loop.add_edge('next', loops[0])
         n.add_edge('next', sum_loop)
-        CHeaderNode.instance().pointer_decls.append(t_var)
-        CHeaderNode.instance().var_decls.append(self.out_var)
-        CHeaderNode.instance().var_decls.append(sum_var)
-        CHeaderNode.instance().math_required = True
-        # Meta data not required yet so remove this node
-        self.replace_self_with_path(n, loops[0])
+        self.pointer_decls.append(t_var)
+        self.var_decls.append(self.out_var)
+        self.var_decls.append(sum_var)
+        self.math_required = True
+        self.add_edge('content', n)
 
 
 class MeanNode(Node):
@@ -460,5 +456,5 @@ class MeanNode(Node):
         in_idx_var.set_indices(count_vars)
         out_idx_var.set_indices(count_vars)
         # Meta data not required yet so remove this node
-        self.replace_self_with_path(n, n)
-        CHeaderNode.instance().var_decls.append(self.out_var)
+        self.add_edge('content', n)
+        self.var_decls.append(self.out_var)

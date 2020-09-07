@@ -1,11 +1,12 @@
 from __future__ import annotations
 import os
 import sys
-import numpy as np
 from numpy import unravel_index
 from nncg.writer import Writer
 from nncg.nodes.expressions import *
 from nncg.traverse.tree import TreeNode
+from nncg.nodes.expressions import Variable
+
 
 class Writable(TreeNode):
     """
@@ -36,6 +37,9 @@ class Node(Writable):
     Base class for nodes.
     """
     arch = 'general'
+    var_decls = List[Variable]
+    const_decls = List[Variable]
+    pointer_decls = List[Variable]
 
     def __init__(self, prev_node: TreeNode = None, name: str = 'next'):
         """
@@ -44,6 +48,10 @@ class Node(Writable):
         :param name: Connects to the previous node with an edge with this name.
         """
         super().__init__()
+        self.var_decls = []
+        self.const_decls = []
+        self.pointer_decls = []
+        self.math_required = False
         if prev_node is not None:
             prev_node.add_edge(name, self)
 
@@ -61,6 +69,32 @@ class Node(Writable):
         :return: True or False.
         """
         return node_type is None or type(self) is node_type
+
+
+class AlternativesNode(Node):
+    def __init__(self, orig_node: Node, prev_node: TreeNode = None, name: str = 'next'):
+        super().__init__(prev_node, name)
+        self.takeover_in_edges_from(orig_node)
+        self.add_edge('content', orig_node, n_type='original')
+        self.orig_node = orig_node
+
+    def add_alternative(self, node: Node):
+        self.add_edge('content', node, n_type='alternative')
+
+    def add_copy_from_orig(self):
+        orig_copy = self.get_orig_node().copy()
+        self.add_alternative(orig_copy)
+
+    def select(self, node):
+        prev_selected = self.get_node('content')
+        e = self.get_edges_to(node)
+        assert len(e) == 1
+        e[0].remove()
+        self.add_edge('content', node, replace=True)
+        self.add_edge('content', prev_selected, n_type='alternative')
+
+    def get_orig_node(self):
+        return self.get_node_by_type('original')[0]
 
 
 class KerasLayerNode(Node):
@@ -146,7 +180,8 @@ class KerasLayerNode(Node):
         else:
             raise Exception("Unimplemented")
 
-        if exit_on_err and not np.allclose(res, c_res, atol=0.000001):  # We have to allow a small error due to rounding errors
+        if exit_on_err and not np.allclose(res, c_res,
+                                           atol=0.000001):  # We have to allow a small error due to rounding errors
             print("Check of variable {} for layer {}.".format(self.in_var, self.layer_name))
             idx = unravel_index(np.argmax(res - c_res), res.shape)
             print('Largest error {} at {} ({}).'.format(np.max(res - c_res), idx, np.argmax(res - c_res)))

@@ -60,6 +60,13 @@ class SearchNodeByType(SearchNode):
 
     @staticmethod
     def get_next(root_node, node_type, traverse_edges=None):
+        """
+        Just search for the first occurance and return it.
+        :param root_node: Start search here.
+        :param node_type: Search for this Node type.
+        :param traverse_edges: List of edges that should be followed, None if default.
+        :return: The first found occurance.
+        """
         action = SearchNodeByType(node_type)
         action.traverse_edges = traverse_edges
         root_node.traverse(action)

@@ -54,6 +54,5 @@ class QuantizeAction(TraverseAction):
                 dtype = 'uint8'
             if self.dtype_required == dtype:
                 x_scale = QuantizedNode.quantize_scale(min_in, max_in, dtype)
-                func(x_scale)
                 QuantizedNode(t, x_scale, prev_keras_node, dtype)
         return True
