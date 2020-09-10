@@ -94,7 +94,7 @@ def VGG16_test():
     """
     num_imgs = 1
     nncg = NNCG()
-    vgg16_m = VGG16(weights=None)
+    vgg16_m = VGG16(weights='imagenet')
     images = random_imdb(num_imgs, vgg16_m.input.shape[1:].as_list())
     nncg.keras_compile(images, vgg16_m, 'vgg16.c', weights_method='stdio')
     print_success('VGG16')

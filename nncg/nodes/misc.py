@@ -109,7 +109,7 @@ class KerasLayerNode(Node):
 {{
     FILE *f = fopen("{var_name}", "wb");
     for (int i = 0; i < {num}; i++)
-        fprintf(f, "%e\\n", ((float*){var_name})[i]);
+        fprintf(f, "%8.8e\\n", ((float*){var_name})[i]);
     fclose(f);
 }} 
 #endif
