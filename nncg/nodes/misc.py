@@ -181,7 +181,7 @@ class KerasLayerNode(Node):
             raise Exception("Unimplemented")
 
         if exit_on_err and not np.allclose(res, c_res,
-                                           atol=0.000001):  # We have to allow a small error due to rounding errors
+                                           atol=0.00001 * np.max(res)):  # We have to allow a small error due to rounding errors
             print("Check of variable {} for layer {}.".format(self.in_var, self.layer_name))
             idx = unravel_index(np.argmax(res - c_res), res.shape)
             print('Largest error {} at {} ({}).'.format(np.max(res - c_res), idx, np.argmax(res - c_res)))

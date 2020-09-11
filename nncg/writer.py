@@ -40,7 +40,7 @@ class Writer:
         :param name: Name of the file.
         :return: None.
         """
-        d.astype("float32").tofile(name)
+        d.tofile(name)
 
     @staticmethod
     def open(path):

@@ -1,9 +1,10 @@
 from nncg.nncg import NNCG
-from applications.daimler.loader import random_imdb
+from applications.daimler.loader import random_imdb, load_images, finish_db
 from keras.applications.vgg16 import VGG16
 from keras.applications.vgg19 import VGG19
 from keras.layers import Flatten, MaxPooling2D, Convolution2D, Dropout, Dense
 from keras.models import Sequential
+import argparse
 
 
 def print_success(name):
@@ -34,7 +35,8 @@ def no_dense():
     no_dense.add(MaxPooling2D(pool_size=(2, 2)))
     no_dense.add(Convolution2D(8, (3, 3), padding='same', activation='relu', bias_initializer='random_uniform'))
     no_dense.add(MaxPooling2D(pool_size=(2, 2)))
-    no_dense.add(Convolution2D(16, (3, 3), padding='same', activation='relu', bias_initializer='random_uniform'))  # Could be softmax
+    no_dense.add(Convolution2D(16, (3, 3), padding='same', activation='relu',
+                               bias_initializer='random_uniform'))  # Could be softmax
     no_dense.add(MaxPooling2D(pool_size=(4, 2)))
     no_dense.add(Dropout(0.4))
     no_dense.add(Convolution2D(2, (2, 2), activation='softmax'))
@@ -49,7 +51,7 @@ def dense_model():
     Tests an example CNN with a Dense layer and valid padding.
     :return: None.
     """
-    num_imgs = 1000
+    num_imgs = 10
     nncg = NNCG()
     dense_model = Sequential()
     dense_model.add(Convolution2D(8, (3, 3), input_shape=(70, 50, 1),
@@ -63,7 +65,7 @@ def dense_model():
     dense_model.add(Flatten())
     dense_model.add(Dense(2, activation='softmax'))
     images = random_imdb(num_imgs, dense_model.input.shape[1:].as_list())
-    nncg.keras_compile(images, dense_model, 'dense_model.c', quatization=True, arch='sse3', test_mode='classification')
+    nncg.keras_compile(images, dense_model, 'dense_model.c')
     print_success('dense_model')
 
 
@@ -94,9 +96,22 @@ def VGG16_test():
     """
     num_imgs = 1
     nncg = NNCG()
+    vgg16_m = VGG16(weights=None)
+    db = random_imdb(num_imgs, vgg16_m.input.shape[1:].as_list())
+    nncg.keras_compile(db, vgg16_m, 'vgg16.c', weights_method='stdio')
+    print_success('VGG16')
+
+
+def VGG16_quantized_test(db):
+    """
+    Tests a full VGG16.
+    :return: None.
+    """
+    num_imgs = 1
+    nncg = NNCG()
     vgg16_m = VGG16(weights='imagenet')
-    images = random_imdb(num_imgs, vgg16_m.input.shape[1:].as_list())
-    nncg.keras_compile(images, vgg16_m, 'vgg16.c', weights_method='stdio')
+    nncg.keras_compile(db, vgg16_m, 'vgg16.c', weights_method='stdio', quatization=True, arch='sse3',
+                       test_mode='classification')
     print_success('VGG16')
 
 
@@ -108,15 +123,43 @@ def VGG19_test():
     num_imgs = 1
     nncg = NNCG()
     vgg19_m = VGG19(weights=None)
-    images = random_imdb(num_imgs, vgg19_m.input.shape[1:].as_list())
-    nncg.keras_compile(images, vgg19_m, 'vgg19.c', weights_method='stdio')
+    db = random_imdb(num_imgs, vgg19_m.input.shape[1:].as_list())
+    nncg.keras_compile(db, vgg19_m, 'vgg19.c', weights_method='stdio')
+    print_success('VGG19')
+
+
+def VGG19_quantized_test(db):
+    """
+    Tests a full VGG19 using quantization.
+    :return: None.
+    """
+    nncg = NNCG()
+    vgg19_m = VGG19(weights='imagenet')
+    nncg.keras_compile(db, vgg19_m, 'vgg19.c', weights_method='stdio', quatization=True, arch='sse3',
+                       test_mode='classification')
     print_success('VGG19')
 
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Test using various CNN.')
+    parser.add_argument('-i', '--image-folder', dest='img_path',
+                        help='Path to the folder containing 0, 1 etc. folders with jpg images. '
+                             'Default is not using real images for testing.')
+    args = parser.parse_args()
+
     # All tests do not need an image database so we just call them.
     no_dense()
     dense_model()
     strides()
     VGG16_test()
     VGG19_test()
+    # Testing quantied networks only makes sense with real images
+    if args.img_path is not None:
+        db = []
+        for i in range(4):
+            db = load_images(args.img_path + "/" + str(i) + "/*.JPEG", {"x": 224, "y": 224}, i, 4, db,
+                             rotate=False, flip=False, gain=False, color=True)
+        db, y, mean = finish_db(db, color=True)
+
+        VGG16_quantized_test(db)
+        VGG19_quantized_test(db)
