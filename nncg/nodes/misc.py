@@ -72,20 +72,48 @@ class Node(Writable):
 
 
 class AlternativesNode(Node):
+    """
+    Base class for nodes that have multiple alternative paths. There will be one active path called content and this
+    path is written to C code. All other paths can be selected to be active if desired. Furthermore, when performing
+    optimizations and other graph traversing actions all alternatives can be processed. Afterwards can be decided, which
+    one will be selected to be written.
+    """
     def __init__(self, orig_node: Node, prev_node: TreeNode = None, name: str = 'next'):
+        '''
+        Init the node.
+        :param orig_node: This node will be the initial content.
+        :param prev_node: The previous node.
+        :param name: Connects to the previous node with an edge with this name.
+        '''
         super().__init__(prev_node, name)
         self.takeover_in_edges_from(orig_node)
         self.add_edge('content', orig_node, n_type='original')
         self.orig_node = orig_node
 
     def add_alternative(self, node: Node):
+        '''
+        Add an alternative node as content. Will not be selected as active automatically.
+        :param node: The node to be added.
+        :return: None.
+        '''
         self.add_edge('content', node, n_type='alternative')
 
     def add_copy_from_orig(self):
+        '''
+        Copy the currently active content and add it as an alternative. Useful to perform operations on a path
+        and keeping the original.
+        :return: None.
+        '''
         orig_copy = self.get_orig_node().copy()
         self.add_alternative(orig_copy)
 
     def select(self, node):
+        '''
+        Selects a node as active content. The node must already be an existing alternative node within this
+        AlternativeNode.
+        :param node: The node to be selected as active.
+        :return: None
+        '''
         prev_selected = self.get_node('content')
         e = self.get_edges_to(node)
         assert len(e) == 1
@@ -94,6 +122,10 @@ class AlternativesNode(Node):
         self.add_edge('content', prev_selected, n_type='alternative')
 
     def get_orig_node(self):
+        '''
+        Get the Node that is currently active.
+        :return: The active Node.
+        '''
         return self.get_node_by_type('original')[0]
 
 

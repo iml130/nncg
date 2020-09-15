@@ -104,6 +104,11 @@ class Variable(TreeNode):
 
     @staticmethod
     def type_to_c(t) -> str:
+        '''
+        Internal type name to C type name.
+        :param t: The internal name.
+        :return: The C style name.
+        '''
         type_map = {
             'float': 'float',
             'float32': 'float',
@@ -118,6 +123,11 @@ class Variable(TreeNode):
 
     @staticmethod
     def type_to_width(t):
+        '''
+        Give the bit width of the internal type name.
+        :param t: The internal type name.
+        :return: The bit width.
+        '''
         width_map = {
             'float': 32,
             'float32': 32,
@@ -172,6 +182,12 @@ class Variable(TreeNode):
 
     @staticmethod
     def format_value(v, dtype: np.dtype):
+        '''
+        Give a string for writing this value.
+        :param v: The value.
+        :param dtype: The datatype of the value.
+        :return: The formatted string.
+        '''
         if dtype == 'float32':
             return np.format_float_scientific(v, precision=15)
         elif dtype == 'int8':
@@ -250,6 +266,12 @@ class IndexedVariable(TreeNode):
             self.add_edge(str(idx), i, n_type='index')
 
     def transpose(self, idx, include_data=True):
+        '''
+        Tranpose the multidimensional matrix.
+        :param idx: New index order, comparable to tranpose of an ndarray.
+        :param include_data: Also transpose the initial data?
+        :return:  None.
+        '''
         if include_data:
             self.get_node('var').init_data = self.get_node('var').init_data.transpose(idx)
         old_idxs = []
@@ -258,7 +280,6 @@ class IndexedVariable(TreeNode):
         for i in range(len(idx)):
             self.add_edge(str(i), old_idxs[idx[i]], n_type='index', replace=True)
         self.get_node('var').dim = [self.get_node('var').dim[idx[i]] for i in range(len(idx))]
-        pass
 
     def __str__(self):
         """

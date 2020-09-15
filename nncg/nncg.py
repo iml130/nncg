@@ -116,7 +116,7 @@ class NNCG:
 
         # Now convert the graph to the desired architecture. This will heavily change in future
         # when more architectures are supported.
-        print_progress_bar(3, STEPS, prefix='Quantization 2nd phase')
+        print_progress_bar(3, STEPS, prefix='Optimization')
         if arch == 'general':
             pass
         elif arch == 'sse3':
@@ -191,6 +191,12 @@ class NNCG:
 
     @staticmethod
     def get_feature_value_range(imdb, model):
+        '''
+        Determine minimum and maximum values of all features value.
+        :param imdb: The image database for inference.
+        :param model: The Keras model.
+        :return: Min and max input for each layer.
+        '''
         print("Predicting images to find min/max for quantization and others...", end="")
         max_in = [np.max(imdb)]
         min_in = [np.min(imdb)]

@@ -173,6 +173,10 @@ class MACNode(ThreeAddressNode):
 
 
 class MultNode(ThreeAddressNode):
+    """
+    A node for multiplication.
+    res = var1 * var2
+    """
     snippet = '{res_var} = {cast} {var1} * {var2};\n'
 
 

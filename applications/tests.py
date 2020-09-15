@@ -104,7 +104,8 @@ def VGG16_test():
 
 def VGG16_quantized_test(db):
     """
-    Tests a full VGG16.
+    Tests a full quantized VGG16.
+    :param db: Image database to test with real images.
     :return: None.
     """
     num_imgs = 1
@@ -131,6 +132,7 @@ def VGG19_test():
 def VGG19_quantized_test(db):
     """
     Tests a full VGG19 using quantization.
+    :param db: Image database to test with real images.
     :return: None.
     """
     nncg = NNCG()

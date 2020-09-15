@@ -53,7 +53,7 @@ class TreeNode:
         """
         Giving a short type. It's a string of the type of the node but as Python also gives the complete 'path'
         when nodes inherit we remove this.
-        :return:
+        :return: The string.
         """
         n = str(type(self))
         return n[n.rindex('.') + 1:-2]
@@ -110,6 +110,11 @@ class TreeNode:
             return self.edges[candidates[0]]
 
     def get_edges_to(self, node) -> List[Edge]:
+        '''
+        Get a list of edges pointing to the given Node.
+        :param node: The Node.
+        :return:
+        '''
         return [e for e in self.edges.values() if e.target == node]
 
     def get_node_by_type(self, n_type) -> List[TreeNode]:
@@ -317,14 +322,24 @@ class TreeNode:
         self.remove_in_edges()
         self.remove_out_edges()
 
-    def plot_graph(self, path):
+    def plot_graph(self, path, level=0):
         """
         Save a pydot plot of the graph starting at this node.
         :param path: Save the plot here.
+        :param level: How many details should be plotted? Level 0 show less details, level 2 all.
         :return: None.
         """
         graph = pydot.Dot(graph_type='digraph')
         action = AddToPydot(graph)
+        if level == 0:  # At level 0 just plot CNN nodes and nodes for code.
+            action.traverse_edges = ['content', 'next']
+        elif level == 1:  # Now additionally add alternatives
+            incl_alternatives = lambda n: n.name_equal('next') or n.name_equal('content') or n.n_type == 'alternative'
+            action.traverse_edges = incl_alternatives
+        elif level == 2:  # Do not provide anything so that everything will be followed
+            action.traverse_edges = None
+        else:
+            print("Unknown print level.")
         self.traverse(action)
         graph.write_png(path)
 
