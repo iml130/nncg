@@ -1,9 +1,9 @@
 from nncg.nncg import NNCG
 from applications.daimler.loader import random_imdb, load_images, finish_db
-from keras.applications.vgg16 import VGG16
-from keras.applications.vgg19 import VGG19
-from keras.layers import Flatten, MaxPooling2D, Convolution2D, Dropout, Dense
-from keras.models import Sequential
+from tensorflow.keras.applications.vgg16 import VGG16
+from tensorflow.keras.applications.vgg19 import VGG19
+from tensorflow.keras.layers import Flatten, MaxPooling2D, Convolution2D, Dropout, Dense
+from tensorflow.keras.models import Sequential
 import argparse
 
 

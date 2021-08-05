@@ -29,7 +29,7 @@ class QuantizeAction(TraverseAction):
         """
         t = edge.get_target()
         if type(t) is KerasLayerNode and callable(t.func):
-            l = t.func([np.array(self.imdb), 0])
+            l = t.func([np.array(self.imdb)])
             t.out_max = np.max(l)
             t.out_min = np.min(l)
         return True

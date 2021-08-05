@@ -1,5 +1,5 @@
-from keras import backend as K
-from keras.layers import Convolution2D, MaxPooling2D, Flatten, \
+from tensorflow.keras import backend as K
+from tensorflow.keras.layers import Convolution2D, MaxPooling2D, Flatten, \
     Dropout, BatchNormalization, LeakyReLU, InputLayer, Dense
 
 from .nodes.cnn import *
@@ -429,7 +429,7 @@ class NNCG:
             func = None
             name = 'input'
         else:
-            func = K.function([self.model.input, K.learning_phase()], [layer.output])
+            func = K.function([self.model.input], [layer.output])
             name = layer.name
         n = KerasLayerNode(prev_node, func, name)
         self.test_nodes.append(n)

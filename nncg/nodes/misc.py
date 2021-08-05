@@ -188,7 +188,7 @@ class KerasLayerNode(Node):
             res = im.reshape(*im.shape[1:])
         else:
             # Otherwise execute the Keras function.
-            res = np.array(self.func([im, 0])).reshape(self.in_dim)
+            res = np.array(self.func([im])).reshape(self.in_dim)
         c_res = np.array(c_res).reshape(self.in_var.dim + np.sum(self.in_var.pads, 1))
 
         if len(np.atleast_1d(self.in_var.dim)) == 3:

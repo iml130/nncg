@@ -1,8 +1,7 @@
 imutils
 numpy
-keras
 imageio
 pydot
 opencv-python
-tensorflow
+tensorflow==2.5.0
 

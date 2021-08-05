@@ -3,7 +3,7 @@ import pickle
 import random
 import numpy as np
 import cv2
-from keras.utils.np_utils import to_categorical
+from tensorflow.keras.utils import to_categorical
 
 
 def load_imdb(imgdb_path):
