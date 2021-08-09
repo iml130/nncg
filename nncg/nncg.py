@@ -1,6 +1,7 @@
 from tensorflow.keras import backend as K
 from tensorflow.keras.layers import Convolution2D, MaxPooling2D, Flatten, \
     Dropout, BatchNormalization, LeakyReLU, InputLayer, Dense
+import keras.layers as kl
 
 from .nodes.cnn import *
 from .nodes.language import CHeaderNode, CFooterNode
@@ -81,24 +82,24 @@ class NNCG:
         # Read the Keras model layer by layer and add it to the graph
 
         for i, layer in enumerate(model.layers):
-            if type(layer) == Convolution2D:
+            if type(layer) == Convolution2D or type(layer) == kl.convolutional.Conv2D:
                 cur_node = self.add_conv2d(layer, cur_node)
-            elif type(layer) == MaxPooling2D:
+            elif type(layer) == MaxPooling2D or type(layer) == kl.pooling.MaxPooling2D:
                 cur_node = self.add_maxpool2d(layer, cur_node)
             elif type(layer) == LeakyReLU:
                 pass  # fixme
-            elif type(layer) == Dense:
+            elif type(layer) == Dense or type(layer) == kl.core.Dense:
                 cur_node = self.add_dense(layer, cur_node)
-            elif type(layer) == Flatten:
+            elif type(layer) == Flatten or type(layer) == kl.core.Flatten:
                 cur_node = self.add_flatten(cur_node)
-            elif type(layer) == Dropout:
+            elif type(layer) == Dropout or type(layer) == kl.Dropout:
                 pass
             elif type(layer) == InputLayer:
                 pass
             elif type(layer) == BatchNormalization:
                 print("Warning: BatchNormalization not implemented")
             else:
-                print("Unknown layer")
+                print("Unknown layer: " + str(type(layer)))
                 sys.exit(1)
 
         CFooterNode(exe_return_filename, weights_method, cur_node)
