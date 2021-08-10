@@ -36,7 +36,7 @@ class Int8SSE3Preprocessing(Node):
         w_idx = l[1].get_node('var')
         c_idx = l[2].get_node('var')
         sse_var_idx.set_indices([h_idx, w_idx, c_idx])
-        an = AssignmentNode(sse_var_idx, Expression('_mm_setzero_ps()'))
+        an = AssignmentNode(sse_var_idx, Expression('_mm_setzero_si128()'))
         l[2].add_edge('content', an)
         self.var_decls.append(self.sse_var)
 
