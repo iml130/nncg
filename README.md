@@ -48,6 +48,7 @@ Currently the following layers are supported:
 * MaxPooling2D with strides
 * Dense
 * Softmax
+* Sigmoid
 * ReLU with "leaky" feature
 
 ### Is my target device supported?

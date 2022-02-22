@@ -361,6 +361,41 @@ class MaxPoolingNode(Node):
         self.add_edge('content', h_loop)
         self.var_decls.append(self.out_var)
 
+class SigmoidNode(Node):
+    """
+    A Sigmoid node. It must be lowered to be writeable as C code but should not be
+    removed from graph to provide the meta information.
+    """
+
+    def __init__(self, prev_node):
+        """
+        Initialize the SigmoidNode.
+        :param prev_node:
+        """
+        super().__init__(prev_node)
+        self.in_var = prev_node.out_var
+        self.in_dim = prev_node.out_dim
+        self.out_dim = self.in_dim
+        self.out_var = Allocation.allocate_var('float', 'x', self.out_dim)
+
+    def lowering(self):
+        """
+        Create the loops required to express this node in ANSI C code without SIMD.
+        This loop will stay in graph to provide meta information.
+        :return: None.
+        """
+        loops, idxs = LoopNode.create_loops(self.in_var.dim)
+        in_var_idx = IndexedVariable(self.in_var)
+        out_var_idx = IndexedVariable(self.out_var)
+        in_var_idx.set_indices(idxs)
+        out_var_idx.set_indices(idxs)
+        expression = Expression('1.f / (1.f + expf(-{t_var_idx}))', t_var_idx=in_var_idx)
+        node = AssignmentNode(out_var_idx, expression)
+        loops[-1].add_edge('content', node)
+        self.var_decls.append(self.out_var)
+
+        # Meta information of this node not required yet, so delete this node and replace it with the loops.
+        self.add_edge('content', loops[0])
 
 class SoftmaxNode(Node):
     """

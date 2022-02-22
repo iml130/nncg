@@ -359,6 +359,8 @@ class NNCG:
             prev_node = self.add_leaky_relu(0, prev_node)
         elif activation.__name__ == 'softmax':
             prev_node = self.add_softmax(prev_node)
+        elif activation.__name__ == 'sigmoid':
+            prev_node = self.add_sigmoid(prev_node)
         return prev_node
 
     @staticmethod
@@ -369,6 +371,15 @@ class NNCG:
         :return: The NNCG SoftmaxNode.
         """
         return SoftmaxNode(prev_node)
+        
+    @staticmethod
+    def add_sigmoid(prev_node) -> SigmoidNode:
+        """
+        Add a sigmoid layer.
+        :param prev_node: Previous node.
+        :return: The NNCG SigmoidNode.
+        """
+        return SigmoidNode(prev_node)
 
     @staticmethod
     def add_flatten(prev_node) -> FlattenNode:
