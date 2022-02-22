@@ -394,6 +394,8 @@ class SigmoidNode(Node):
         loops[-1].add_edge('content', node)
         self.var_decls.append(self.out_var)
 
+        self.math_required = True
+
         # Meta information of this node not required yet, so delete this node and replace it with the loops.
         self.add_edge('content', loops[0])
 
