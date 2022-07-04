@@ -70,7 +70,7 @@ class TreeNode:
         Give all edges from this node that are not of type "inverse".
         :return: List of Edges.
         """
-        return [e for e in self.edges.values() if e.n_type is not 'inverse']
+        return [e for e in self.edges.values() if e.n_type != 'inverse']
 
     def inverse_edges(self) -> List[Edge]:
         """
