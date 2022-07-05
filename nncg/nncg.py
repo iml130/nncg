@@ -174,13 +174,15 @@ class NNCG:
                     fail += 1
             elif test_mode == 'regression':
                 pass
-            percent_err = '{:.1f}'.format(((tested - fail) / tested * 100))
+            err = ((tested - fail) / tested * 100)
+            percent_err = '{:.1f}'.format(err)
             err_overview = str(['{:.3f}'.format(np.max(a - b)) for a, b in zip(res_list, c_res_list)])
             print_progress_bar(tested, testing,
                                suffix=", " + percent_err + "% ok, errors: " + err_overview,
                                prefix='Evaluating')
         Allocation.reset()
         CHeaderNode.instance().reset()
+        return err
 
     def quantize(self, imdb, required_dtype):
         """
