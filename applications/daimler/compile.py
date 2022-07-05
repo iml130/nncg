@@ -13,10 +13,12 @@ def compile(model_path, code_path, imgdb_path):
     model = load_model(model_path, compile=False)
 
     general_generator = NNCG()
-    general_generator.keras_compile(images["images"], model, code_path, "qsse3", arch="sse3", testing=1000,
-                                    quatization=True, test_mode='classification')
+    ok = general_generator.keras_compile(images["images"], model, code_path, "qsse3", arch="sse3", testing=1000,
+                                         quatization=True, test_mode='classification')
+    assert(ok > 95)
     sse_generator = NNCG()
-    sse_generator.keras_compile(images["images"], model, code_path, "sse3", arch="sse3", testing=1000)
+    ok = sse_generator.keras_compile(images["images"], model, code_path, "sse3", arch="sse3", testing=1000)
+    assert(ok == 100)
 
 if __name__ == "__main__":
     tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
