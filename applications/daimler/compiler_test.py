@@ -1,10 +1,14 @@
 from unittest import TestCase
 from applications.daimler.gen_imdb_daimler import generate
+from applications.daimler.train import train
+from applications.daimler.compile import compile
 
 class Tests(TestCase):
-    def test(self):
+    def test_daimler(self):
         generate("db", {"x": 18, "y": 36}, "img.db")
+        train("img.db", "model.h5")
+        compile("model.h5", ".", "img.db")
 
 if __name__ == "__main__":
     t = Tests()
-    t.test()
+    t.test_daimler()
