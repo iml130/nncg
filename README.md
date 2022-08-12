@@ -45,6 +45,7 @@ a VGG16 convolutional neural network and all kind of networks based on the layer
 Currently the following layers are supported:
 
 * Convolution2D with padding valid/same and strides
+* SeparableConvolution2D with padding valid/same and strides
 * MaxPooling2D with strides
 * Dense
 * Softmax

@@ -1,5 +1,5 @@
 from tensorflow.keras import backend as K
-from tensorflow.keras.layers import Convolution2D, MaxPooling2D, Flatten, \
+from tensorflow.keras.layers import SeparableConvolution2D, Convolution2D, MaxPooling2D, Flatten, \
     Dropout, BatchNormalization, LeakyReLU, InputLayer, Dense
 import keras.layers as kl
 
@@ -82,7 +82,9 @@ class NNCG:
         # Read the Keras model layer by layer and add it to the graph
 
         for i, layer in enumerate(model.layers):
-            if type(layer) == Convolution2D or type(layer) == kl.convolutional.Conv2D:
+            if type(layer) == SeparableConvolution2D or type(layer) == kl.convolutional.SeparableConv2D:
+                cur_node = self.add_separable_conv2d(layer, cur_node)
+            elif type(layer) == Convolution2D or type(layer) == kl.convolutional.Conv2D:
                 cur_node = self.add_conv2d(layer, cur_node)
             elif type(layer) == MaxPooling2D or type(layer) == kl.pooling.MaxPooling2D:
                 cur_node = self.add_maxpool2d(layer, cur_node)
@@ -336,6 +338,21 @@ class NNCG:
         if self.testing != 0:
             cur_node = self.add_test_node(cur_node, layer)
         return cur_node
+
+    def add_separable_conv2d(self, layer, prev_node):
+        w1 = K.eval(layer.weights[0])
+        w2 = K.eval(layer.weights[1])
+        b = K.eval(layer.bias)
+        strides = layer.strides
+        padding = layer.padding
+        activation = layer.activation
+        cur_node = SeparableConv2D_Depthwise_Node(w1, np.zeros(b.shape, dtype='float32'), strides, padding, prev_node)
+        cur_node = SeparableConv2D_Pointwise_Node(w2, b, (1, 1), 'valid', cur_node)
+        cur_node = self.add_activation(activation, cur_node)
+        if self.testing != 0:
+            cur_node = self.add_test_node(cur_node, layer)
+        return cur_node
+
 
     def write_c(self, path):
         """
