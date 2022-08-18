@@ -8,6 +8,8 @@ class Tests(TestCase):
         generate("db", {"x": 18, "y": 36}, "img.db")
         train("img.db", "model.h5")
         compile("model.h5", ".", "img.db")
+        train("img.db", "model_separable.h5", use_separable=True)
+        compile("model_separable.h5", ".", "img.db")
 
 if __name__ == "__main__":
     t = Tests()
