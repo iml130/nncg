@@ -3,5 +3,5 @@ numpy
 imageio
 pydot
 opencv-python
-tensorflow==2.7.2
+tensorflow==2.9.3
 
