@@ -219,7 +219,7 @@ class NNCG:
         From a general architecture to SSE3.
         :return: None
         """
-        desired_unroll = 3
+        desired_unroll = 4
         node_type = MACNode
         NNCG.join_loops(self.root_node, desired_unroll, node_type)
         action = SearchNodeByType(node_type)
